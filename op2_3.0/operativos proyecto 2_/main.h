@@ -27,3 +27,13 @@ typedef struct pipeReducer
     int valor;
 } pReducer;
 
+typedef struct buffer
+{
+    int valor, key;
+} BufferP;
+
+typedef struct datosBuffer
+{
+    int id, cantidadLineas;
+} DatosEnbuffer;
+

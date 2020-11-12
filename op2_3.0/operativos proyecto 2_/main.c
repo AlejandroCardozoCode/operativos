@@ -279,14 +279,21 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
 }
 int map(char nombrePipe[], struct Parametros *parametros, int contador)
 {
-
-    int fd, key = 0, valor = 0;
+    int fd, key = 0, valor = 0, fdB;
     double numCambio = encontrarCambiante(parametros);
     int maps = parametros->nmappers;                         //numero de mappers
     int line = parametros->lineas;                           //numero de reducers
+    int contadorLineasBuffer = 0;
     double lineasArchivos = ((double)line) / ((double)maps); //calcula las lineas que debe tener cada split
     int parteEntera = ((int)lineasArchivos);                 //parte entera de la variable lineasArchivos
     char nombreBuf[15], lineaPipeActual[1000], *token;
+    FILE *DatosBuffersarch = fopen("Datos_buffer.txt", "a");
+    if (DatosBuffersarch == NULL)
+    {
+        perror("Error: no se pudo abrir el archivo de registros del buffer\n");
+        exit(0);
+    }
+    
     if (contador < numCambio)
     {
         parteEntera++;
@@ -300,12 +307,13 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
     }
     read(fd, &infoDelPipe, sizeof(pMapper) * (parteEntera));
     struct Consulta consulta;
-    
-    sprintf(nombreBuf, "Buf_%d.txt", contador); //ajuste de el nombre del buf
-    FILE *Buf = fopen(nombreBuf, "w");          //se crea el archivo buf
-    if (Buf == NULL)
+    BufferP bufferActual[parteEntera];
+    BufferP informacionEnviar[parteEntera];
+    sprintf(nombreBuf, "Buf_%d", contador); //ajuste de el nombre del buf
+    fdB = open(nombreBuf, O_WRONLY);          //se crea el archivo buf
+    if (fdB == -1)
     {
-        perror("Error: no se pudo abrir el archivo del buffer");
+        perror("Error: no se pudo abrir el pipe del buffer");
         exit(0);
     }
     for (int v = 0; v < parteEntera; v++)
@@ -329,8 +337,10 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                     valor = atoi(token);
                     if (valor > (consulta.valor))
                     {
-                        //printf("el valor dela key es:%d y el valor es : %d\n", key, valor);
-                        fprintf(Buf, "%d %d\n", key, valor);
+                        contadorLineasBuffer++;
+                        bufferActual[v].valor = valor;
+                        bufferActual[v].key = key;
+                        
                     }
                 }
                 break;
@@ -340,7 +350,10 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                     valor = atoi(token);
                     if (valor < (consulta.valor))
                     {
-                        fprintf(Buf, "%d %d\n", key, valor); //guarla la key y el valor en el nuevo archivo
+                        contadorLineasBuffer++;
+                        bufferActual[v].valor = valor;
+                        bufferActual[v].key = key;
+                        write(fdB,&bufferActual, sizeof(BufferP));
                     }
                 }
                 break;
@@ -350,7 +363,10 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                     valor = atoi(token);
                     if (valor >= (consulta.valor))
                     {
-                        fprintf(Buf, "%d %d\n", key, valor); //guarla la key y el valor en el nuevo archivo
+                        contadorLineasBuffer++;
+                        bufferActual[v].valor = valor;
+                        bufferActual[v].key = key;
+                        write(fdB,&bufferActual, sizeof(BufferP));
                     }
                 }
                 break;
@@ -360,7 +376,10 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                     valor = atoi(token);
                     if (valor <= (consulta.valor))
                     {
-                        fprintf(Buf, "%d %d\n", key, valor); //guarla la key y el valor en el nuevo archivo
+                        contadorLineasBuffer++;
+                        bufferActual[v].valor = valor;
+                        bufferActual[v].key = key;
+                        write(fdB,&bufferActual, sizeof(BufferP));
                     }
                 }
                 break;
@@ -370,16 +389,27 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                     valor = atoi(token);
                     if (valor == (consulta.valor))
                     {
-                        fprintf(Buf, "%d %d\n", key, valor); //guarla la key y el valor en el nuevo archivo
+                        contadorLineasBuffer++;
+                        bufferActual[v].valor = valor;
+                        bufferActual[v].key = key;
+                        write(fdB,&bufferActual, sizeof(BufferP)*parteEntera);
                     }
                 }
                 break;
             }
             token = strtok(NULL, " ");
         }
+        
     }
     close(fd);
-    fclose(Buf);   //cierra el archivo buf
+    close(fdB);   //cierra el archivo buf
+    fprintf(DatosBuffersarch, "%d %d\n", contador, contadorLineasBuffer);
+    fclose(DatosBuffersarch);
+    for (int i = 0; i < parteEntera; i++)
+    {
+        printf("el valor del buffer %d, %d,")
+    }
+    
     return 0;
 }
 double calcularSobrasReduce(int mapers, int reducers) //funcio que calcula cuantos archivos buf sobran en la asignacio a cada reducer
@@ -522,6 +552,7 @@ int master(struct Parametros *parametros, struct Consulta *consulta) // funcion 
     struct timeval tiempo_i, tiempo_f, tiempo_tot; //variables para poder medir la ejecucion de un programa
     validacionConsulta = interpretarConsulta(consulta);
     char nombrePipe[15];
+    int maps = parametros->nmappers;
     if (validacionConsulta == -1)
     {
         printf("ERROR: ocurrio un error inesperado en la lectura de la consulta\n");
@@ -552,6 +583,10 @@ int master(struct Parametros *parametros, struct Consulta *consulta) // funcion 
         }
     }
 
+    
+    
+
+    /*
     for (int i = 0; i < parametros->nreducers; i++) //for que se encarga de crear los procesos de los n-reducers
     {
         int idR = fork(); //creacion del proceso
@@ -565,16 +600,20 @@ int master(struct Parametros *parametros, struct Consulta *consulta) // funcion 
             wait(NULL); //el programa espera a que los procesos acaben la asignacion de los datos
         }
     }
+    */
 
     char nombrePipeOut[15];
     int fd;
-    pReducer infoEntrante;
-    for (int i = 0; i < parametros->nreducers; i++)
+    BufferP infoEntrante[41];
+    for (int i = 0; i < parametros->nmappers; i++)
     {
-        sprintf(nombrePipeOut, "pipeR_%d", i);
+        sprintf(nombrePipeOut, "Buf_%d", i);
         fd = open(nombrePipeOut, O_RDONLY);
-        read(fd, &infoEntrante, sizeof(pReducer));
-        printf("el valor del reduce %d es: %d\n", i, infoEntrante.valor);
+        read(fd, &infoEntrante, sizeof(BufferP)*41);
+        for (int j = 0; j < 41; j++)
+        {
+            printf("el valor del buffer %d es: %d, %d\n", i, infoEntrante[j].valor, infoEntrante[j].key);
+        } 
     }
     
     return 0;
@@ -584,7 +623,7 @@ int main(int argc, char *argv[])
     int condicional = 0, opcion_menu, resultado, numMappers = atoi(argv[3]), numReducers = atoi(argv[4]), banderaPipe;
     struct Parametros *parametros = (struct Parametros *)malloc(sizeof(struct Parametros)); //crea la estructura para guardar los parametros
     struct Consulta consulta;                                                               //crea la estructura de la consulta
-    char nombrePipe[100];
+    char nombrePipe[15], nombrepipeBuffer[15];
 
     if (argc < 6) //valida que se ingresaran datos a el programa
     {
@@ -597,10 +636,6 @@ int main(int argc, char *argv[])
     parametros->nmappers = atoi(argv[3]);
     parametros->nreducers = atoi(argv[4]);
     parametros->intermedios = atoi(argv[5]);
-
-    pMapper pipeMapper[atoi(argv[3])];
-    pReducer pipeReducers[atoi(argv[4])];
-
     for (int i = 0; i < numMappers; i++)
     {
         sprintf(nombrePipe, "pipeM_%d", i);
@@ -611,6 +646,14 @@ int main(int argc, char *argv[])
             exit(1);
         }
         close(banderaPipe);
+
+        sprintf(nombrepipeBuffer, "Buf_%d",i);
+        banderaPipe = open(nombrepipeBuffer, O_CREAT, S_IRUSR | S_IWUSR);
+        if (banderaPipe == -1)
+        {
+            perror("pipe");
+            exit(1);
+        }
     }
 
     for (int i = 0; i < numReducers; i++)

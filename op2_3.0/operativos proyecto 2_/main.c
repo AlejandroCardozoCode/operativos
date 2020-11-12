@@ -60,7 +60,6 @@ int impresion_menu() // funcion que imprime el primer menu del programa
 
     //hola esto es una prueba
 }
-
 bool isInteger(char *str) //esta funcion fue tomada de internet para poder saber si un char es un dato numerico, se m¿implementa en la funcion de interpretarConsulta https://www.geeksforgeeks.org/c-program-detect-tokens-c-program/
 {
     int i, len = strlen(str);
@@ -74,7 +73,6 @@ bool isInteger(char *str) //esta funcion fue tomada de internet para poder saber
     }
     return (true);
 }
-
 int interpretarConsulta(struct Consulta *consulta) // funcion que guarda la consulta ingresada en una estructura
 {
 
@@ -131,7 +129,6 @@ int interpretarConsulta(struct Consulta *consulta) // funcion que guarda la cons
     consulta->valor = atoi(token); //asigna el dato a la estructura
     return 0;
 }
-
 double encontrarCambiante(struct Parametros *parametros)
 {
     int maps = parametros->nmappers;                               //numero de mappers
@@ -142,7 +139,6 @@ double encontrarCambiante(struct Parametros *parametros)
 
     return sobras;
 }
-
 int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consulta)
 {
     FILE *registros;                                                          //variable del archivo de los registros
@@ -281,7 +277,6 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
     }
     return 0;
 }
-
 int map(char nombrePipe[], struct Parametros *parametros, int contador)
 {
 
@@ -387,15 +382,146 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
     fclose(Buf);   //cierra el archivo buf
     return 0;
 }
+double calcularSobrasReduce(int mapers, int reducers) //funcio que calcula cuantos archivos buf sobran en la asignacio a cada reducer
+{
 
+    long double sobras = 0;                                                         //numero de sobras
+    long double cantidadReducers = (long double)mapers / (long double)reducers;     //numero de reduceers totales
+    int parteEntera = (int)cantidadReducers;                                        //parte entera de la variable cantidadReducers
+    sobras = (cantidadReducers - (long double)parteEntera) * (long double)reducers; // calcula las sobras
+    return sobras;
+}
+int contarLineas(char noombreArch[]) //cuenta las lineas de un archivo
+{
+    char ch;                            //caracter actual de la linea
+    FILE *fp = fopen(noombreArch, "r"); //archivo  que se quieren saber las lineas
+    if (fp == NULL)
+    {
+        perror("Error: no se pudo abrir el archivo");
+        exit(0);
+    }
+    int lineas = 0;   //contador de las lineas
+    while (ch != EOF) // while que se ejecuta mientras no sea el final del archivo
+    {
+        ch = getc(fp); //obtiene el caracter actual
+        if (ch == '\n')
+        {
+            lineas++; //aumenta la lineas totales del archivo
+        }
+    }
+    fclose(fp); //cierra el archivo
+    return lineas;
+}
+long double hallarNumeroOutput(long double reducer, long double pEntera, long double nuevo) //halla el valor de la posicion del buf que se debe abrir a partir de la poscion del un numero del reduce
+{
+    long double cantidad_mover = nuevo - reducer;
+    long double inicio = reducer * (pEntera + 1);
+    long double posi = inicio + cantidad_mover * pEntera;
+    //printf("DENTRO DE FUNCION LA POSICION ES: %Lf", posi);
+    return posi;
+}
+void reduce(struct Parametros *parametros, int reduceActual) //funcion que ejecuta los procesos reduce
+{
+    int mapers = parametros->nmappers;                    //mappers pasados por parametros
+    int reducers = parametros->nreducers;                 //reducers pasados por parametros
+    int sobras = calcularSobrasReduce(mapers, reducers);  //calcula los buf sobrantes que quedan de la divicion entre los mappers y los reducers
+    int lineas = 0, auxLineas = 0;                        //lineas son las lineas que contiene un archivo y auxLineas es el contador:
+    int fd;
+    float cantidadDeArchivos = mapers / reducers;         //cantidad de datos que tiene que seleccionar cada reduce
+    int parteEntera = (int)cantidadDeArchivos;            //parte entera de la variable cantidadDeArchivos
+    char nombreBuf[15], nombrePipeOut[15];                 //nombre del buf y nombre de el archivo output
+    FILE *Buf;                                            //variable del archivo buf
+    pReducer pipeR;
+    char nombreArchivoRegistros [15] = "intermedio.txt";
+    sprintf(nombrePipeOut, "pipeR_%d", reduceActual);
+    fd = open(nombrePipeOut, O_WRONLY);
 
+    if (fd == -1)
+    {
+        perror("Error: no se pudo abrir el pipe del reduce");
+        exit(0);
+    }
+    if (sobras == 0) //se ejecuta si no hay archivos sobrantes
+    {
+        int corrector = reduceActual * parteEntera; //corrector da la posicion de el archivo buf para abrir
+        for (int i = 0; i < parteEntera; i++)       //for que abre n.bufs como necesite el output
+        {
+            sprintf(nombreBuf, "Buf_%d.txt", i + corrector); //se ajusta el nombre del archivo buf
+            Buf = fopen(nombreBuf, "r");                     //abre el archivo
+            if (Buf == NULL)
+            {
+                perror("Error: no se pudo abrir el archivo");
+                exit(0);
+            }
+            auxLineas = contarLineas(nombreBuf); //cuenta las lineas del archivo
+            lineas = lineas + auxLineas;         //guarda el numero de lineas que tiene el archivo buf
+            auxLineas = 0;                       //vuelve a iniciar el contador
+            fclose(Buf);                         //se cierra el archivo buf
+        }
+        write(fd, &lineas,sizeof(int));
+        close(fd);                  //se cierra el archivo pipe
+    }
 
+    if (sobras != 0) //se ejecuta si hay archivos sobrantes
+    {
+        if (reduceActual < sobras) //se evalua si el reduce actual es menor a el reduce de cambio
+        {
+            int corrector = reduceActual * (parteEntera + 1); //corrector da la posicion de el archivo buf para abrir
+            for (int i = 0; i < parteEntera + 1; i++)         //for que abre n.bufs como necesite el output con el sobrante
+            {
+                sprintf(nombreBuf, "Buf_%d.txt", corrector + i); //se ajusta el nombre del archivo buf
+                Buf = fopen(nombreBuf, "r");                     //abre el archivo
+                if (Buf == NULL)
+                {
+                    perror("Error: no se pudo abrir el archivo");
+                    exit(0);
+                }
+                auxLineas = contarLineas(nombreBuf); //cuenta las lineas del archivo
+                //printf("el buf %d tiene %d lineas\n", corrector +i, auxLineas);
+                //printf("el archivo tiene %d lineas\n", auxLineas);
+                lineas = lineas + auxLineas; //guarda el numero de lineas que tiene el archivo buf
+                auxLineas = 0;               //vuelve a iniciar el contador
+                fclose(Buf);                 //se cierra el archivo buf
+            }
+            //printf("las lineas de el output  %d son : %d\n", reduceActual, lineas);
+            write(fd, &lineas,sizeof(int));
+            close(fd);                  //se cierra el archivo pipe
+            //printf("deberia seleccionar %d archivos \n", parteEntera+1);
+        }
+        if (reduceActual >= sobras) //se evalua si el reduce actual es mayor o igual a el reduce de cambio
+        {
+            for (int i = 0; i < parteEntera; i++) //for que abre n.bufs como necesite el output
+            {
+                long double po = i + hallarNumeroOutput(((((long double)mapers / (long double)reducers) - (long double)parteEntera) * (long double)reducers), parteEntera, reduceActual); //llama a una funcion necesaria para poder calcular la posicion de el nuevo buf despues de qeu se asignan los sobrantes
+                po = po + 0.55;                                                                                                                                                           //aumenta ese valor ya que es necesario para que al parte entera sea asignada de la manera correcta
+                //printf("\nPO ES: %Lf y su casteo a int es %d:\n",po, (int)po);
+                sprintf(nombreBuf, "Buf_%d.txt", (int)po); //ajusta el nombre del archivo buf
+                Buf = fopen(nombreBuf, "r");               //abre el archivo buf
+                if (Buf == NULL)
+                {
+                    perror("Error: no se pudo abrir el archivo");
+                    exit(0);
+                }
+                auxLineas = contarLineas(nombreBuf); // cuenta las lineas de el archivo
+                //printf("el buf %d tiene %d lineas\n", (int)po, auxLineas);
+                //printf("el archivo tiene %d lineas\n", auxLineas);
+                lineas = lineas + auxLineas; //asigna las lineas actuales a el total
+                auxLineas = 0;               //reinicia el contador
+                fclose(Buf);                 //cierra el archivo
+            }
+            //printf("las lineas de el output  %d son : %d\n", reduceActual, lineas);
+            write(fd, &lineas,sizeof(int));
+            close(fd);                  //se cierra el archivo pipe                 //cierra el archivo output
+            //printf("deberia seleccionar %d archivos \n", parteEntera);
+        }
+    }
+}
 int master(struct Parametros *parametros, struct Consulta *consulta) // funcion master que se encarga de todo el proceso de archivos del programa
 {
     int validacionConsulta, validacionAsigPipe1;
     struct timeval tiempo_i, tiempo_f, tiempo_tot; //variables para poder medir la ejecucion de un programa
     validacionConsulta = interpretarConsulta(consulta);
-    char nombrePipe[100];
+    char nombrePipe[15];
     if (validacionConsulta == -1)
     {
         printf("ERROR: ocurrio un error inesperado en la lectura de la consulta\n");
@@ -439,10 +565,20 @@ int master(struct Parametros *parametros, struct Consulta *consulta) // funcion 
             wait(NULL); //el programa espera a que los procesos acaben la asignacion de los datos
         }
     }
+
+    char nombrePipeOut[15];
+    int fd;
+    pReducer infoEntrante;
+    for (int i = 0; i < parametros->nreducers; i++)
+    {
+        sprintf(nombrePipeOut, "pipeR_%d", i);
+        fd = open(nombrePipeOut, O_RDONLY);
+        read(fd, &infoEntrante, sizeof(pReducer));
+        printf("el valor del reduce %d es: %d\n", i, infoEntrante.valor);
+    }
     
     return 0;
 }
-
 int main(int argc, char *argv[])
 {
     int condicional = 0, opcion_menu, resultado, numMappers = atoi(argv[3]), numReducers = atoi(argv[4]), banderaPipe;
@@ -517,5 +653,3 @@ int main(int argc, char *argv[])
         }
     }
 }
-
-//nos quedamos en la creacion de los splits y llamado a la funcion

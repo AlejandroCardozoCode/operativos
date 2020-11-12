@@ -140,6 +140,145 @@ double encontrarCambiante(struct Parametros *parametros)
     return sobras;
 }
 
+int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consulta)
+{
+    FILE *registros;                                                          //variable del archivo de los registros
+    registros = fopen(parametros->logfile, "r");                              //abre el archivo de los registros
+    int maps, line, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, fd; // variables para asignar los datos del registro
+    maps = parametros->nmappers;                                              //numero de mappers
+    line = parametros->lineas;                                                //numero de reducers
+    double lineasArchivos = ((double)line) / ((double)maps);                  //calcula las lineas que debe tener cada split
+    int parteEntera = ((int)lineasArchivos);                                  //parte entera de la variable lineasArchivos
+    double sobras = (lineasArchivos - (double)parteEntera) * maps;            //calcula cuantas lineas quedan sobrando si la divicion no es exacta
+    int auxSobrantes = 1;                                                     //contador de cuantos sobrantes se han asignado
+    char nombrePipe[15];
+    char lineaArchivo[1000];
+    pMapper infoEnviar[parteEntera];
+    pMapper infoEnviar2[parteEntera + 1];
+
+    if (sobras == (double)0) //se ejecuta si no hay lineas sobrantes
+    {
+
+        for (int x = 0; x < maps; x++)
+        {
+            sprintf(nombrePipe, "pipeM_%d", x);
+            fd = open(nombrePipe, O_WRONLY);
+            if (fd == -1)
+            {
+                perror("Error: no se pudo abrir el pipe");
+                return -1;
+            }
+            for (int z = 0; z < parteEntera; z++) //copia las variables del archivo de registros a el nuevo split
+            {
+                fscanf(registros, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r);
+                infoEnviar[z].consul.columna = consulta->columna;
+                infoEnviar[z].consul.valor = consulta->valor;
+                infoEnviar[z].consul.signo = consulta->signo;
+                infoEnviar[z].a = a;
+                infoEnviar[z].b = b;
+                infoEnviar[z].c = c;
+                infoEnviar[z].d = d;
+                infoEnviar[z].e = e;
+                infoEnviar[z].f = f;
+                infoEnviar[z].g = g;
+                infoEnviar[z].h = h;
+                infoEnviar[z].i = i;
+                infoEnviar[z].j = j;
+                infoEnviar[z].k = k;
+                infoEnviar[z].l = l;
+                infoEnviar[z].m = m;
+                infoEnviar[z].n = n;
+                infoEnviar[z].o = o;
+                infoEnviar[z].p = p;
+                infoEnviar[z].q = q;
+                infoEnviar[z].r = r;
+            }
+            write(fd, &infoEnviar, sizeof(pMapper) * parteEntera);
+            close(fd); //cierra del pipe
+        }
+        fclose(registros); //cierra el archivo de registros
+    }
+
+    if (sobras != (float)0) //se ejecuta si no hay lineas sobrantes
+    {
+        printf("\nADVERTENCIA: la divicion entre mapers y las lineas totales no es exacta");
+        printf("\nse hara el reparto lo mas equilibrado posible\n");
+        for (int z = 0; z < maps; z++)
+        {
+            sprintf(nombrePipe, "pipeM_%d", z); //ajusta el nombre de el archivo split
+            fd = open(nombrePipe, O_WRONLY);    //abre el archivo
+            if (fd == -1)
+            {
+                perror("Error: no se pudo abrir el pipe");
+                return -1;
+            }
+            if (auxSobrantes < sobras)
+            {
+                auxSobrantes++;
+                for (int z = 0; z < parteEntera + 1; z++) //copia las variables del archivo de registros a el nuevo split
+                {
+                    fscanf(registros, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r);
+                    infoEnviar2[z].consul.columna = consulta->columna;
+                    infoEnviar2[z].consul.valor = consulta->valor;
+                    infoEnviar2[z].consul.signo = consulta->signo;
+                    infoEnviar2[z].a = a;
+                    infoEnviar2[z].b = b;
+                    infoEnviar2[z].c = c;
+                    infoEnviar2[z].d = d;
+                    infoEnviar2[z].e = e;
+                    infoEnviar2[z].f = f;
+                    infoEnviar2[z].g = g;
+                    infoEnviar2[z].h = h;
+                    infoEnviar2[z].i = i;
+                    infoEnviar2[z].j = j;
+                    infoEnviar2[z].k = k;
+                    infoEnviar2[z].l = l;
+                    infoEnviar2[z].m = m;
+                    infoEnviar2[z].n = n;
+                    infoEnviar2[z].o = o;
+                    infoEnviar2[z].p = p;
+                    infoEnviar2[z].q = q;
+                    infoEnviar2[z].r = r;
+                }
+                write(fd, &infoEnviar2, sizeof(pMapper) * (parteEntera + 1));
+                close(fd); //cierra del pipe
+            }
+            else //asigna una linea sobrante a el archivo pipe
+            {
+                for (int z = 0; z < parteEntera; z++) //copia las variables del archivo de registros a el nuevo pipe
+                {
+                    fscanf(registros, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r);
+                    infoEnviar[z].consul.columna = consulta->columna;
+                    infoEnviar[z].consul.valor = consulta->valor;
+                    infoEnviar[z].consul.signo = consulta->signo;
+                    infoEnviar[z].a = a;
+                    infoEnviar[z].b = b;
+                    infoEnviar[z].c = c;
+                    infoEnviar[z].d = d;
+                    infoEnviar[z].e = e;
+                    infoEnviar[z].f = f;
+                    infoEnviar[z].g = g;
+                    infoEnviar[z].h = h;
+                    infoEnviar[z].i = i;
+                    infoEnviar[z].j = j;
+                    infoEnviar[z].k = k;
+                    infoEnviar[z].l = l;
+                    infoEnviar[z].m = m;
+                    infoEnviar[z].n = n;
+                    infoEnviar[z].o = o;
+                    infoEnviar[z].p = p;
+                    infoEnviar[z].q = q;
+                    infoEnviar[z].r = r;
+                }
+                write(fd, &infoEnviar, sizeof(pMapper) * (parteEntera));
+                close(fd); //cierra del pipe
+            }
+        }
+        fclose(registros); //cierra el archivo de registros
+    }
+    return 0;
+}
+
 int map(char nombrePipe[], struct Parametros *parametros, int contador)
 {
 

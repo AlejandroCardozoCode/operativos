@@ -16,6 +16,8 @@
 #include <wait.h>
 #include "main.h"
 
+//esto es una prueba del repositorio de git
+
 int verificarInt(char segmento[])
 {
     int siEs = 0;
@@ -119,7 +121,7 @@ int interpretarConsulta(struct Consulta *consulta) // funcion que guarda la cons
         printf("ERROR: valor del signo es invalido\n");
         return -1;
     }
-    
+
     token = strtok(NULL, ",");
     if (isInteger(token) == false) //llama a la funcion isinteger
     {

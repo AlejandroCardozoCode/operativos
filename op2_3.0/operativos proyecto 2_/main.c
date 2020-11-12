@@ -119,6 +119,7 @@ int interpretarConsulta(struct Consulta *consulta) // funcion que guarda la cons
         printf("ERROR: valor del signo es invalido\n");
         return -1;
     }
+    
     token = strtok(NULL, ",");
     if (isInteger(token) == false) //llama a la funcion isinteger
     {

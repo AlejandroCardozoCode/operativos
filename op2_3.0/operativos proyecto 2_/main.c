@@ -149,7 +149,7 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
     double lineasArchivos = ((double)line) / ((double)maps);                  //calcula las lineas que debe tener cada split
     int parteEntera = ((int)lineasArchivos);                                  //parte entera de la variable lineasArchivos
     double sobras = (lineasArchivos - (double)parteEntera) * maps;            //calcula cuantas lineas quedan sobrando si la divicion no es exacta
-    int auxSobrantes = 1;                                                     //contador de cuantos sobrantes se han asignado
+    int auxSobrantes = 0;                                                     //contador de cuantos sobrantes se han asignado
     char nombrePipe[15];
     char lineaArchivo[1000];
     pMapper infoEnviar[parteEntera];
@@ -167,7 +167,7 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
                 perror("Error: no se pudo abrir el pipe");
                 return -1;
             }
-            for (int z = 0; z < parteEntera; z++) //copia las variables del archivo de registros a el nuevo split
+            for (int z = 0; z <= parteEntera; z++) //copia las variables del archivo de registros a el nuevo split
             {
                 fscanf(registros, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r);
                 infoEnviar[z].consul.columna = consulta->columna;
@@ -275,14 +275,43 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
         }
         fclose(registros); //cierra el archivo de registros
     }
+
+    pMapper infoRecibida[parteEntera + 1];
+    pMapper infoRecibida2[parteEntera];
+    int contadorImp = 1;
+    for (int i = 0; i < maps; i++)
+    {
+        sprintf(nombrePipe, "pipeM_%d", i);
+        fd = open(nombrePipe, O_RDONLY);
+        printf("la informacion del pipe %d es la siguiente\n", i);
+        if (contadorImp < sobras)
+        {
+            read(fd, &infoRecibida, sizeof(pMapper) * (parteEntera + 1));
+            for (int v = 0; v < parteEntera + 1; v++) 
+            {
+                printf("el valor de el primer dato es: %d el valor del segundo dato es: %d y el valor del tercer dato es: %d \n", infoRecibida[v].a, infoRecibida[v].b, infoRecibida[v].c);
+            }
+            close(fd);
+            contadorImp++;
+        }
+        else
+        {
+            read(fd, &infoRecibida2, sizeof(pMapper) * (parteEntera));
+            for (int v = 0; v < parteEntera; v++) 
+            {
+                printf("el valor de el primer dato es: %d el valor del segundo dato es: %d y el valor del tercer dato es: %d \n", infoRecibida2[v].a, infoRecibida2[v].b, infoRecibida2[v].c);
+            }
+            close(fd);
+        }
+    }
     return 0;
 }
 int map(char nombrePipe[], struct Parametros *parametros, int contador)
 {
     int fd, key = 0, valor = 0, fdB;
     double numCambio = encontrarCambiante(parametros);
-    int maps = parametros->nmappers;                         //numero de mappers
-    int line = parametros->lineas;                           //numero de reducers
+    int maps = parametros->nmappers; //numero de mappers
+    int line = parametros->lineas;   //numero de reducers
     int contadorLineasBuffer = 0;
     double lineasArchivos = ((double)line) / ((double)maps); //calcula las lineas que debe tener cada split
     int parteEntera = ((int)lineasArchivos);                 //parte entera de la variable lineasArchivos
@@ -293,7 +322,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
         perror("Error: no se pudo abrir el archivo de registros del buffer\n");
         exit(0);
     }
-    
+
     if (contador < numCambio)
     {
         parteEntera++;
@@ -308,9 +337,15 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
     read(fd, &infoDelPipe, sizeof(pMapper) * (parteEntera));
     struct Consulta consulta;
     BufferP bufferActual[parteEntera];
+    for (int i = 0; i < parteEntera; i++)
+    {
+        bufferActual[i].key = 0;
+        bufferActual[i].valor = 0;
+    }
+
     BufferP informacionEnviar[parteEntera];
     sprintf(nombreBuf, "Buf_%d", contador); //ajuste de el nombre del buf
-    fdB = open(nombreBuf, O_WRONLY);          //se crea el archivo buf
+    fdB = open(nombreBuf, O_WRONLY);        //se crea el archivo buf
     if (fdB == -1)
     {
         perror("Error: no se pudo abrir el pipe del buffer");
@@ -340,7 +375,6 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                         contadorLineasBuffer++;
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                        
                     }
                 }
                 break;
@@ -353,7 +387,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                         contadorLineasBuffer++;
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                        write(fdB,&bufferActual, sizeof(BufferP));
+                        write(fdB, &bufferActual, sizeof(BufferP));
                     }
                 }
                 break;
@@ -366,7 +400,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                         contadorLineasBuffer++;
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                        write(fdB,&bufferActual, sizeof(BufferP));
+                        write(fdB, &bufferActual, sizeof(BufferP));
                     }
                 }
                 break;
@@ -379,7 +413,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                         contadorLineasBuffer++;
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                        write(fdB,&bufferActual, sizeof(BufferP));
+                        write(fdB, &bufferActual, sizeof(BufferP));
                     }
                 }
                 break;
@@ -392,24 +426,27 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                         contadorLineasBuffer++;
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                        write(fdB,&bufferActual, sizeof(BufferP)*parteEntera);
+                        write(fdB, &bufferActual, sizeof(BufferP) * parteEntera);
                     }
                 }
                 break;
             }
             token = strtok(NULL, " ");
         }
-        
     }
+    memcpy(informacionEnviar, bufferActual, sizeof(BufferP) * parteEntera);
+    write(fdB, &informacionEnviar, sizeof(BufferP) * parteEntera);
     close(fd);
-    close(fdB);   //cierra el archivo buf
+    close(fdB); //cierra el archivo buf
     fprintf(DatosBuffersarch, "%d %d\n", contador, contadorLineasBuffer);
     fclose(DatosBuffersarch);
-    for (int i = 0; i < parteEntera; i++)
-    {
-        printf("el valor del buffer %d, %d,")
-    }
-    
+    // for (int i = 0; i < parteEntera; i++)
+    // {
+    //     if (bufferActual[i].key != 0)
+    //     {
+    //     printf("el valor del buffer %d, con key: %d y valor %d\n", contador, bufferActual[i].key, bufferActual[i].valor);
+    //     }
+    // }
     return 0;
 }
 double calcularSobrasReduce(int mapers, int reducers) //funcio que calcula cuantos archivos buf sobran en la asignacio a cada reducer
@@ -452,97 +489,124 @@ long double hallarNumeroOutput(long double reducer, long double pEntera, long do
 }
 void reduce(struct Parametros *parametros, int reduceActual) //funcion que ejecuta los procesos reduce
 {
-    int mapers = parametros->nmappers;                    //mappers pasados por parametros
-    int reducers = parametros->nreducers;                 //reducers pasados por parametros
-    int sobras = calcularSobrasReduce(mapers, reducers);  //calcula los buf sobrantes que quedan de la divicion entre los mappers y los reducers
-    int lineas = 0, auxLineas = 0;                        //lineas son las lineas que contiene un archivo y auxLineas es el contador:
-    int fd;
-    float cantidadDeArchivos = mapers / reducers;         //cantidad de datos que tiene que seleccionar cada reduce
-    int parteEntera = (int)cantidadDeArchivos;            //parte entera de la variable cantidadDeArchivos
-    char nombreBuf[15], nombrePipeOut[15];                 //nombre del buf y nombre de el archivo output
-    FILE *Buf;                                            //variable del archivo buf
+    int mapers = parametros->nmappers;                   //mappers pasados por parametros
+    int reducers = parametros->nreducers;                //reducers pasados por parametros
+    int sobras = calcularSobrasReduce(mapers, reducers); //calcula los buf sobrantes que quedan de la divicion entre los mappers y los reducers
+    int lineas = 0, auxLineas = 0;                       //lineas son las lineas que contiene un archivo y auxLineas es el contador:
+    int fd, fdB;
+    float cantidadDeArchivos = mapers / reducers; //cantidad de datos que tiene que seleccionar cada reduce
+    int parteEntera = (int)cantidadDeArchivos;    //parte entera de la variable cantidadDeArchivos
+    int parteEntera2 = parametros->lineas / mapers;
+    char nombreBuf[15], nombrePipeOut[15]; //nombre del buf y nombre de el archivo output
+    BufferP bufferActual[parteEntera2];    //variable del archivo buf
     pReducer pipeR;
-    char nombreArchivoRegistros [15] = "intermedio.txt";
-    sprintf(nombrePipeOut, "pipeR_%d", reduceActual);
-    fd = open(nombrePipeOut, O_WRONLY);
+    char nombreArchivoRegistros[15] = "intermedio.txt";
+    FILE *archivoRegistro;
 
-    if (fd == -1)
-    {
-        perror("Error: no se pudo abrir el pipe del reduce");
-        exit(0);
-    }
     if (sobras == 0) //se ejecuta si no hay archivos sobrantes
     {
-        int corrector = reduceActual * parteEntera; //corrector da la posicion de el archivo buf para abrir
-        for (int i = 0; i < parteEntera; i++)       //for que abre n.bufs como necesite el output
+        sprintf(nombrePipeOut, "pipeR_%d", reduceActual);
+        fd = open(nombrePipeOut, O_WRONLY);
+        if (fd == -1)
         {
-            sprintf(nombreBuf, "Buf_%d.txt", i + corrector); //se ajusta el nombre del archivo buf
-            Buf = fopen(nombreBuf, "r");                     //abre el archivo
-            if (Buf == NULL)
-            {
-                perror("Error: no se pudo abrir el archivo");
-                exit(0);
-            }
-            auxLineas = contarLineas(nombreBuf); //cuenta las lineas del archivo
-            lineas = lineas + auxLineas;         //guarda el numero de lineas que tiene el archivo buf
-            auxLineas = 0;                       //vuelve a iniciar el contador
-            fclose(Buf);                         //se cierra el archivo buf
+            perror("Error: no se pudo abrir el pipe del reduce");
+            exit(0);
         }
-        write(fd, &lineas,sizeof(int));
-        close(fd);                  //se cierra el archivo pipe
+        sprintf(nombreBuf, "Buf_%d", reduceActual);
+        fdB = open(nombreBuf, O_RDONLY);
+        if (fdB == -1)
+        {
+            perror("Error: no se pudo abrir el pipe del buffer");
+            exit(0);
+        }
+        read(fdB, &bufferActual, sizeof(BufferP) * parteEntera2);
+        int corrector = reduceActual * parteEntera; //corrector da la posicion de el archivo buf para abrir
+        for (int i = 0; i < parteEntera2; i++)      //for que abre n.bufs como necesite el output
+        {
+
+            if (bufferActual[i].key != 0)
+            {
+                printf("entro\n");
+                lineas++;
+            }
+        }
+        write(fd, &lineas, sizeof(int));
+        close(fd); //se cierra el archivo pipe
+        close(fdB);
     }
 
     if (sobras != 0) //se ejecuta si hay archivos sobrantes
     {
         if (reduceActual < sobras) //se evalua si el reduce actual es menor a el reduce de cambio
         {
+            sprintf(nombrePipeOut, "pipeR_%d", reduceActual);
+            fd = open(nombrePipeOut, O_WRONLY);
+            if (fd == -1)
+            {
+                perror("Error: no se pudo abrir el pipe del reduce");
+                exit(0);
+            }
             int corrector = reduceActual * (parteEntera + 1); //corrector da la posicion de el archivo buf para abrir
-            for (int i = 0; i < parteEntera + 1; i++)         //for que abre n.bufs como necesite el output con el sobrante
+            for (int j = 0; j < parteEntera + 1; j++)
             {
-                sprintf(nombreBuf, "Buf_%d.txt", corrector + i); //se ajusta el nombre del archivo buf
-                Buf = fopen(nombreBuf, "r");                     //abre el archivo
-                if (Buf == NULL)
+                sprintf(nombreBuf, "Buf_%d", corrector+j);
+                fdB = open(nombreBuf, O_RDONLY);
+                if (fdB == -1)
                 {
-                    perror("Error: no se pudo abrir el archivo");
+                    perror("Error: no se pudo abrir el pipe del buffer");
                     exit(0);
                 }
-                auxLineas = contarLineas(nombreBuf); //cuenta las lineas del archivo
-                //printf("el buf %d tiene %d lineas\n", corrector +i, auxLineas);
-                //printf("el archivo tiene %d lineas\n", auxLineas);
-                lineas = lineas + auxLineas; //guarda el numero de lineas que tiene el archivo buf
-                auxLineas = 0;               //vuelve a iniciar el contador
-                fclose(Buf);                 //se cierra el archivo buf
+                read(fdB, &bufferActual, sizeof(BufferP) * parteEntera2);
+                for (int i = 0; i < parteEntera2; i++)      //for que abre n.bufs como necesite el output
+                {
+                    if (bufferActual[i].key != 0)
+                    {
+                        printf("el reducer pafre es: %d\n", reduceActual);
+                        printf("%d\n",bufferActual[i].key);
+                        lineas++;
+                    }
+                }
             }
-            //printf("las lineas de el output  %d son : %d\n", reduceActual, lineas);
-            write(fd, &lineas,sizeof(int));
-            close(fd);                  //se cierra el archivo pipe
-            //printf("deberia seleccionar %d archivos \n", parteEntera+1);
+            write(fd, &lineas, sizeof(int));
+            close(fd); //se cierra el archivo pipe
+            close(fdB);
+            sobras++;
         }
-        if (reduceActual >= sobras) //se evalua si el reduce actual es mayor o igual a el reduce de cambio
+        else
+        //se evalua si el reduce actual es mayor o igual a el reduce de cambio
         {
-            for (int i = 0; i < parteEntera; i++) //for que abre n.bufs como necesite el output
+            sprintf(nombrePipeOut, "pipeR_%d", reduceActual);
+            fd = open(nombrePipeOut, O_WRONLY);
+            if (fd == -1)
             {
-                long double po = i + hallarNumeroOutput(((((long double)mapers / (long double)reducers) - (long double)parteEntera) * (long double)reducers), parteEntera, reduceActual); //llama a una funcion necesaria para poder calcular la posicion de el nuevo buf despues de qeu se asignan los sobrantes
-                po = po + 0.55;                                                                                                                                                           //aumenta ese valor ya que es necesario para que al parte entera sea asignada de la manera correcta
-                //printf("\nPO ES: %Lf y su casteo a int es %d:\n",po, (int)po);
-                sprintf(nombreBuf, "Buf_%d.txt", (int)po); //ajusta el nombre del archivo buf
-                Buf = fopen(nombreBuf, "r");               //abre el archivo buf
-                if (Buf == NULL)
+                perror("Error: no se pudo abrir el pipe del reduce");
+                exit(0);
+            }
+            for (int j = 0; j < parteEntera; j++)
+            {
+                long double po = j + hallarNumeroOutput(((((long double)mapers / (long double)reducers) - (long double)parteEntera) * (long double)reducers), parteEntera, reduceActual); 
+                po = po + 0.55;
+                sprintf(nombreBuf, "Buf_%d", (int)po);;
+                fdB = open(nombreBuf, O_RDONLY);
+                if (fdB == -1)
                 {
-                    perror("Error: no se pudo abrir el archivo");
+                    perror("Error: no se pudo abrir el pipe del buffer");
                     exit(0);
                 }
-                auxLineas = contarLineas(nombreBuf); // cuenta las lineas de el archivo
-                //printf("el buf %d tiene %d lineas\n", (int)po, auxLineas);
-                //printf("el archivo tiene %d lineas\n", auxLineas);
-                lineas = lineas + auxLineas; //asigna las lineas actuales a el total
-                auxLineas = 0;               //reinicia el contador
-                fclose(Buf);                 //cierra el archivo
+                read(fdB, &bufferActual, sizeof(BufferP) * parteEntera2);
+                for (int i = 0; i < parteEntera2; i++)      //for que abre n.bufs como necesite el output
+                {
+                    if (bufferActual[i].key != 0)
+                    {
+                        printf("el reducer pafre es: %d\n", reduceActual);
+                        printf("%d\n",bufferActual[i].key);
+                        lineas++;
+                    }
+                }
             }
-            //printf("las lineas de el output  %d son : %d\n", reduceActual, lineas);
-            write(fd, &lineas,sizeof(int));
-            close(fd);                  //se cierra el archivo pipe                 //cierra el archivo output
-            //printf("deberia seleccionar %d archivos \n", parteEntera);
+            write(fd, &lineas, sizeof(int));
+            close(fd); //se cierra el archivo pipe
+            close(fdB);
         }
     }
 }
@@ -553,6 +617,7 @@ int master(struct Parametros *parametros, struct Consulta *consulta) // funcion 
     validacionConsulta = interpretarConsulta(consulta);
     char nombrePipe[15];
     int maps = parametros->nmappers;
+    int reducers = parametros->nreducers;
     if (validacionConsulta == -1)
     {
         printf("ERROR: ocurrio un error inesperado en la lectura de la consulta\n");
@@ -567,14 +632,14 @@ int master(struct Parametros *parametros, struct Consulta *consulta) // funcion 
         printf("ERROR: ocurrio un error inesperado en la asignacion del pipe 1\n");
         return -1;
     }
-    
+
     for (int i = 0; i < parametros->nmappers; i++) //for que se encarga de crear los procesos de los n-mappers
     {
         int id = fork(); //creacion del proceso
         if (id == 0)
         {
-            sprintf(nombrePipe, "pipeM_%d", i);   //se ajusta el nombre del archivo para cada mapper
-            map(nombrePipe, parametros, i); //cada mapper ejecuta la funcion de map
+            sprintf(nombrePipe, "pipeM_%d", i); //se ajusta el nombre del archivo para cada mapper
+            map(nombrePipe, parametros, i);     //cada mapper ejecuta la funcion de map
             exit(0);
         }
         else
@@ -583,10 +648,6 @@ int master(struct Parametros *parametros, struct Consulta *consulta) // funcion 
         }
     }
 
-    
-    
-
-    /*
     for (int i = 0; i < parametros->nreducers; i++) //for que se encarga de crear los procesos de los n-reducers
     {
         int idR = fork(); //creacion del proceso
@@ -600,22 +661,21 @@ int master(struct Parametros *parametros, struct Consulta *consulta) // funcion 
             wait(NULL); //el programa espera a que los procesos acaben la asignacion de los datos
         }
     }
-    */
 
-    char nombrePipeOut[15];
-    int fd;
-    BufferP infoEntrante[41];
-    for (int i = 0; i < parametros->nmappers; i++)
-    {
-        sprintf(nombrePipeOut, "Buf_%d", i);
-        fd = open(nombrePipeOut, O_RDONLY);
-        read(fd, &infoEntrante, sizeof(BufferP)*41);
-        for (int j = 0; j < 41; j++)
-        {
-            printf("el valor del buffer %d es: %d, %d\n", i, infoEntrante[j].valor, infoEntrante[j].key);
-        } 
-    }
     
+    
+    pReducer infoRecibida;
+    char nombreRedu[15];
+    int fd;
+    for (int i = 0; i < reducers; i++)
+    {
+        
+        sprintf(nombreRedu, "pipeR_%d", i);
+        fd = open(nombreRedu, O_RDONLY);
+        read(fd, &infoRecibida, sizeof(BufferP) * reducers);
+        printf("el reducer %d tiene %d valores validos\n", i, infoRecibida.valor);
+    }
+
     return 0;
 }
 int main(int argc, char *argv[])
@@ -647,7 +707,7 @@ int main(int argc, char *argv[])
         }
         close(banderaPipe);
 
-        sprintf(nombrepipeBuffer, "Buf_%d",i);
+        sprintf(nombrepipeBuffer, "Buf_%d", i);
         banderaPipe = open(nombrepipeBuffer, O_CREAT, S_IRUSR | S_IWUSR);
         if (banderaPipe == -1)
         {

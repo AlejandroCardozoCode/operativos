@@ -16,11 +16,9 @@
 #include <wait.h>
 #include "main.h"
 
-//esto es una prueba del repositorio de git
-
 int verificarInt(char segmento[])
 {
-    int siEs = 0;
+    int siEs = 0;   
     int tamano = strlen(segmento);
     for (int i = 0; i < tamano; i++) //analiza cada dato ingresado por el usuario
     {
@@ -486,33 +484,33 @@ void reduce(struct Parametros *parametros, int reduceActual) //funcion que ejecu
     int reducers = parametros->nreducers;                //reducers pasados por parametros
     int sobras = calcularSobrasReduce(mapers, reducers); //calcula los buf sobrantes que quedan de la divicion entre los mappers y los reducers
     int lineas = 0, auxLineas = 0;                       //lineas son las lineas que contiene un archivo y auxLineas es el contador:
-    int fd, fdB;
+    int fd, fdB, key, valor;
     float cantidadDeArchivos = mapers / reducers; //cantidad de datos que tiene que seleccionar cada reduce
     int parteEntera = (int)cantidadDeArchivos;    //parte entera de la variable cantidadDeArchivos
     int parteEntera2 = parametros->lineas / mapers;
     char nombreBuf[15], nombrePipeOut[15]; //nombre del buf y nombre de el archivo output
     double numCambio = encontrarCambiante(parametros);
-    //variable del archivo buf
     pReducer pipeR;
-    char nombreArchivoRegistros[15] = "intermedio.txt";
     FILE *archivoRegistro;
     BufferP bufferActual[parteEntera2];
+    char nombreArchivoRegistros[20];
     if (sobras == 0) //se ejecuta si no hay archivos sobrantes
     {
-            sprintf(nombrePipeOut, "pipeR_%d", reduceActual);
-            fd = open(nombrePipeOut, O_WRONLY);
-            if (fd == -1)
-            {
-                perror("Error: no se pudo abrir el pipe del reduce");
-                exit(0);
-            }
-            int corrector = reduceActual * (parteEntera); //corrector da la posicion de el archivo buf para abrir
-            for (int j = 0; j < parteEntera ; j++)
-            {
+        sprintf(nombreArchivoRegistros,"intermedio_%d.txt", reduceActual);
+        archivoRegistro =  fopen(nombreArchivoRegistros, "a");
+        sprintf(nombrePipeOut, "pipeR_%d", reduceActual);
+        fd = open(nombrePipeOut, O_WRONLY);
+        if (fd == -1)
+        {
+            perror("Error: no se pudo abrir el pipe del reduce");
+            exit(0);
+        }
+        int corrector = reduceActual * (parteEntera); //corrector da la posicion de el archivo buf para abrir
+        for (int j = 0; j < parteEntera; j++)
+        {
             BufferP bufferActual[parteEntera2];
-            sprintf(nombreBuf, "Buf_%d", corrector+j);
+            sprintf(nombreBuf, "Buf_%d", corrector + j);
             fdB = open(nombreBuf, O_RDONLY);
-            
             if (fdB == -1)
             {
                 perror("Error: no se pudo abrir el pipe del buffer");
@@ -522,9 +520,14 @@ void reduce(struct Parametros *parametros, int reduceActual) //funcion que ejecu
             int corrector = reduceActual * parteEntera; //corrector da la posicion de el archivo buf para abrir
             for (int i = 0; i < parteEntera2; i++)      //for que abre n.bufs como necesite el output
             {
-
                 if (bufferActual[i].key != 0)
                 {
+                    if (parametros->intermedios == 1)
+                    {
+                        key = bufferActual[i].key;
+                        valor = bufferActual[i].valor;
+                        fprintf(archivoRegistro, "%d %d\n", key, valor);
+                    }
                     lineas++;
                 }
             }
@@ -532,12 +535,15 @@ void reduce(struct Parametros *parametros, int reduceActual) //funcion que ejecu
         write(fd, &lineas, sizeof(int));
         close(fd); //se cierra el archivo pipe
         close(fdB);
+        fclose(archivoRegistro);
     }
 
     if (sobras != 0) //se ejecuta si hay archivos sobrantes
     {
         if (reduceActual < sobras) //se evalua si el reduce actual es menor a el reduce de cambio
         {
+            sprintf(nombreArchivoRegistros,"intermedio_%d.txt", reduceActual);
+            archivoRegistro =  fopen(nombreArchivoRegistros, "a");
             sprintf(nombrePipeOut, "pipeR_%d", reduceActual);
             fd = open(nombrePipeOut, O_WRONLY);
             if (fd == -1)
@@ -561,6 +567,12 @@ void reduce(struct Parametros *parametros, int reduceActual) //funcion que ejecu
                 {
                     if (bufferActual[i].key != 0)
                     {
+                        if (parametros->intermedios == 1)
+                        {
+                            key = bufferActual[i].key;
+                            valor = bufferActual[i].valor;
+                            fprintf(archivoRegistro, "%d %d\n", key, valor);
+                        }
                         lineas++;
                     }
                 }
@@ -568,11 +580,14 @@ void reduce(struct Parametros *parametros, int reduceActual) //funcion que ejecu
             write(fd, &lineas, sizeof(int));
             close(fd); //se cierra el archivo pipe
             close(fdB);
+            fclose(archivoRegistro);
             sobras++;
         }
         else
         //se evalua si el reduce actual es mayor o igual a el reduce de cambio
         {
+            sprintf(nombreArchivoRegistros,"intermedio_%d.txt", reduceActual);
+            archivoRegistro =  fopen(nombreArchivoRegistros, "a");   
             sprintf(nombrePipeOut, "pipeR_%d", reduceActual);
             fd = open(nombrePipeOut, O_WRONLY);
             if (fd == -1)
@@ -597,6 +612,12 @@ void reduce(struct Parametros *parametros, int reduceActual) //funcion que ejecu
                 {
                     if (bufferActual[i].key != 0)
                     {
+                        if (parametros->intermedios == 1)
+                        {
+                            key = bufferActual[i].key;
+                            valor = bufferActual[i].valor;
+                            fprintf(archivoRegistro, "%d %d\n", key, valor);
+                        }
                         lineas++;
                     }
                 }
@@ -604,40 +625,35 @@ void reduce(struct Parametros *parametros, int reduceActual) //funcion que ejecu
             write(fd, &lineas, sizeof(int));
             close(fd); //se cierra el archivo pipe
             close(fdB);
+            fclose(archivoRegistro);
         }
     }
 }
-
 void borrarArchivos(struct Parametros *parametros)
 {
     int contador = 0;
-    char nombreArch[15];
+    char nombreArch[20];
     for (int i = 0; i < parametros->nmappers; i++)
     {
         sprintf(nombreArch, "pipeM_%d", i);
-        if (remove(nombreArch) == 0)
-        {
-            contador = contador;
-        }
+        remove(nombreArch);
     }
     for (int i = 0; i < parametros->nmappers; i++)
     {
         sprintf(nombreArch, "Buf_%d", i);
-        if (remove(nombreArch) == 0)
-        {
-            contador = contador;
-        }
+        remove(nombreArch);
     }
     for (int i = 0; i < parametros->nreducers; i++)
     {
         sprintf(nombreArch, "pipeR_%d", i);
-        if (remove(nombreArch) == 0)
-        {
-            contador = contador;
-        }
+        remove(nombreArch);
+    }
+    for (int i = 0; i < parametros->nreducers; i++)
+    {
+        sprintf(nombreArch, "intermedio_%d.txt", i);
+        remove(nombreArch);
     }
 }
-
 int calcularValorFinal(struct Parametros *parametros)
 {
     pReducer infoRecibida;
@@ -649,14 +665,13 @@ int calcularValorFinal(struct Parametros *parametros)
         sprintf(nombreRedu, "pipeR_%d", i);
         fd = open(nombreRedu, O_RDONLY);
         read(fd, &infoRecibida, sizeof(BufferP) * reducers);
-        if(infoRecibida.valor != 0)
+        if (infoRecibida.valor != 0)
         {
-        contador= contador + infoRecibida.valor;
+            contador = contador + infoRecibida.valor;
         }
     }
     return contador;
 }
-
 int master(struct Parametros *parametros, struct Consulta *consulta) // funcion master que se encarga de todo el proceso de archivos del programa
 {
     int validacionConsulta, validacionAsigPipe1;
@@ -709,7 +724,10 @@ int master(struct Parametros *parametros, struct Consulta *consulta) // funcion 
             wait(NULL); //el programa espera a que los procesos acaben la asignacion de los datos
         }
     }
-
+    gettimeofday(&tiempo_f, NULL);               //optiene el tiempo final de ejecucion
+    timersub(&tiempo_f, &tiempo_i, &tiempo_tot); //se calcula el tiempo total de ejecucion de el programa
+    printf("Resultados\n"); //se imprimen los resultados del programa
+    printf("El tiempo que tomo el programa fue de: %li segundos %li microsegundos\n", tiempo_tot.tv_sec, tiempo_tot.tv_usec);
     valorFinal = calcularValorFinal(parametros);
     printf("el valor final es: %d\n", valorFinal);
     return 0;
@@ -780,6 +798,7 @@ int main(int argc, char *argv[])
         else if (opcion_menu == 2) // opcion que finaliza el programa
         {
             borrarArchivos(parametros);
+            free(parametros);
             condicional = 1;
         }
         else if (opcion_menu == -1)

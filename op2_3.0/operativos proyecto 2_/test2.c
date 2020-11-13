@@ -8,6 +8,9 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include "main.h"
+#include <signal.h>
+#include <wait.h>
+
 
 typedef struct arreglopipe
 {
@@ -16,64 +19,43 @@ typedef struct arreglopipe
     int g;
 } arreglo;
 
+void signalHandler(int x)
+{
 
+  printf("El proceso central recibio la señal SIGUSR1\n");
+  //free(&x);
+  exit(0);
+}
+
+void hijo(int x)
+{
+    signal(SIGUSR1,signalHandler);
+    printf("soy el hijo\n");
+    int j = x;
+    pause();
+    signalHandler(j);
+}
 
 int main(int argc, char *argv[])
 {
+    int id, status;
+    for (int i = 0; i < 3; i++)
+    {
+        id = fork();
+        if (id == 0)
+        {
+            hijo(i);
+        }
+        else
+        {
+            wait(NULL); //el programa espera a que los procesos acaben la asignacion de los datos
+        }
+    }
+    int senal_1  = kill(id, SIGUSR1);
+    for (int i = 0; i < 2; i++)
+     {
+        wait(&status);
+        exit(0);
+    }
     
-    int i = 0;
-    int fd;
-    arreglo pipestr[3];
-    arreglo ff[9];
-    arreglo  infoEnviar [3];
-
-    char nombrePipe[100];
-
-    //fumcion de creacion de pipes 
-
-    for (i = 0; i < 3; i++)
-    {
-        sprintf(nombrePipe, "pipe_%d", i);
-        fd = open(nombrePipe, O_CREAT, S_IRUSR | S_IWUSR);
-        if (fd == -1)
-        {
-            perror("pipe");
-            exit(1);
-        }
-        close(fd);
-    }
-    i = 0;
-    for (i = 0; i < 9; i++)
-    {
-        ff[i].i = i;
-        ff[i].d = i * 2;
-        ff[i].g = i * 3;
-    }
-
-    i = 0;
-
-    int j = 0;
-    int auxcontador = 0;
-
-    for (i = 0; i < 3; i++) // este tres es por el numero de pipes 
-    {
-        sprintf(nombrePipe, "pipe_%d", i);
-        fd = open(nombrePipe, O_WRONLY);
-        if (fd == -1)
-        {
-            perror("pipe");
-            exit(1);
-        }
-
-        for (j = 0; j < 3; j++) // este tres es por el numero del tamaño del arreglo 
-        {
-            infoEnviar[j].i = ff[auxcontador].i;
-            infoEnviar[j].d = ff[auxcontador].d;
-            infoEnviar[j].g = ff[auxcontador].g;
-            auxcontador++;
-        }
-        memcpy(pipestr, infoEnviar, sizeof(arreglo)*); // este tres es por el tamaño de arreglo dentro de la estructura
-        write(fd, &pipestr, sizeof(pipestr));
-        close(fd);
-    }
 }

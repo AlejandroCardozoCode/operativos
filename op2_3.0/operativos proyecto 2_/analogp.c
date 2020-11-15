@@ -716,10 +716,6 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
             map(nombrePipe, parametros, i);
             exit(0);
         }
-        else
-        {
-            wait(NULL);
-        }
     }
     for (i = 0; i < parametros->nreducers; i++)
     {
@@ -728,10 +724,6 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
         {
             reduce(parametros, i);
             exit(0);
-        }
-        else
-        {
-            wait(NULL);
         }
     }
     gettimeofday(&tiempo_f, NULL);
@@ -771,17 +763,13 @@ int main(int argc, char *argv[])
     for (i = 0; i < numMappers; i++)
     {
         sprintf(nombrePipe, "pipeM_%d", i);
-        banderaPipe = open(nombrePipe, O_CREAT, 0400 | 0200);
-        if (banderaPipe == -1)
+        if (mknod(nombrePipe, 0010000 | 0400 | 0200, 0) == -1)
         {
             perror("pipe");
             exit(1);
         }
-        close(banderaPipe);
-
         sprintf(nombrepipeBuffer, "Buf_%d", i);
-        banderaPipe = open(nombrepipeBuffer, O_CREAT, 0400 | 0200);
-        if (banderaPipe == -1)
+        if (mknod(nombrepipeBuffer, 0010000 | 0400 | 0200, 0) == -1)
         {
             perror("pipe");
             exit(1);
@@ -790,13 +778,11 @@ int main(int argc, char *argv[])
     for (i = 0; i < numReducers; i++)
     {
         sprintf(nombrePipe, "pipeR_%d", i);
-        banderaPipe = open(nombrePipe, O_CREAT, 0400 | 0200);
-        if (banderaPipe == -1)
+        if (mknod(nombrePipe, 0010000 | 0400 | 0200, 0) == -1)
         {
             perror("pipe");
             exit(1);
         }
-        close(banderaPipe);
     }
     if (parametros->nmappers < parametros->nreducers)
     {

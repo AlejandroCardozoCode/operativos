@@ -17,42 +17,78 @@ typedef struct arreglopipe
     int g;
 } arreglo;
 
+void escribirPipe(int i)
+{
+    int x,
+        fd;
+    x = i * i;
+    char nombrepipe[20];
+    sprintf(nombrepipe, "pipe_%d", i);
+    fd = open(nombrepipe, O_WRONLY);
+    if (fd == -1)
+    {
+        perror("pipe");
+        exit(0);
+    }
+    if (write(fd, &x, sizeof(int)) == -1)
+    {
+        perror("pipe 3");
+        exit(0);
+    }
+    close(fd);
+    return;
+}
+
+void leerPipe(int i)
+{
+    int fd,
+        z;
+    char nombrepipe[20];
+    sprintf(nombrepipe, "pipe_%d", i);
+    fd = open(nombrepipe, O_RDONLY);
+    if (fd == -1)
+    {
+        perror("pipe");
+        exit(0);
+    }
+    if (read(fd, &z, sizeof(int)) == -1)
+    {
+        perror("pipe 3");
+        exit(0);
+    }
+    printf("el valor de x es igula a: %d\n", z);
+    close(fd);
+}
+
 int main(int argc, char *argv[])
 {
-    char nombrepipe[20];
-    mode_t fifo_mode = S_IRUSR | S_IWUSR;
-    int fd
-        , x,
-        z,
-        ff;
-    for (int i = 0; i < 3; i++)
-    {
-        sprintf(nombrepipe, "pipe_%d", i);
-        ff = mknod(nombrepipe, S_IFIFO | S_IRUSR | S_IWUSR ,0);
-        if (ff == -1)
-        {
-           perror("error en el mknod\n");
-           exit(0);
-        }
-        
-    }
 
-    for (int i = 0; i < 3; i++)
-    {
-        x = i;
-        sprintf(nombrepipe, "pipe_%d", i);
-        fd = open(nombrepipe, O_WRONLY);
-        printf("el valor de x es igula a: %d\n",x);
-        write(fd, &x, sizeof(int));
-        close(fd);
-    }
+    int fd,
+        x,
+        z,
+        id;
+    char nombrepipe[20];
     for (int i = 0; i < 3; i++)
     {
         sprintf(nombrepipe, "pipe_%d", i);
-        fd = open(nombrepipe, O_RDONLY);
-        read(fd, &z, sizeof(int));
-        printf("el valor de x es igula a: %d\n",z);
-        close(fd);
+        mknod(nombrepipe, S_IFIFO | S_IRUSR | S_IWUSR, 0);
     }
-    
+    for (int i = 0; i < 3; i++)
+    {
+        id = fork();
+        if (id == 0)
+        {
+            escribirPipe(i);
+            exit(0);
+        }
+    }
+    for (int i = 0; i < 3; i++)
+    {
+        id = fork();
+        if (id == 0)
+        {
+            leerpipe(i);
+            exit(0);
+        }
+    }
 }

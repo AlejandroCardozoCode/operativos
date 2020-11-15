@@ -401,7 +401,6 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
     close(fdB); 
     return 0;
 }
-
 double calcularSobrasReduce(int mapers, int reducers) 
 {
 

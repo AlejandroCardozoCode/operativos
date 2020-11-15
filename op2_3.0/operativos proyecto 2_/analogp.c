@@ -134,19 +134,21 @@ double encontrarCambiante(struct Parametros *parametros)
 
 int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consulta)
 {
-    FILE *registros;                                                          
-    registros = fopen(parametros->logfile, "r");                              
-    int maps, line, a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, fd; 
-    maps = parametros->nmappers;                                              
-    line = parametros->lineas;                                                
-    double lineasArchivos = ((double)line) / ((double)maps);                  
-    int parteEntera = ((int)lineasArchivos);                                  
-    double sobras = encontrarCambiante(parametros);            
-    int auxSobrantes = 0;                                                     
-    char nombrePipe[15];
-    char lineaArchivo[1000];
-    pMapper infoEnviar[parteEntera];
-    pMapper infoEnviar2[parteEntera + 1];
+    FILE *registros;                                                            
+    int maps = parametros->nmappers;                                              
+    int line = parametros->lineas;  
+    double lineasArchivos = ((double)line) / ((double)maps);   
+    double sobras = encontrarCambiante(parametros);                         
+    int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, 
+        fd, 
+        parteEntera = ((int)lineasArchivos), 
+        auxSobrantes = 0 ;     
+                                                
+    char nombrePipe[15], lineaArchivo[1000];
+    pMapper infoEnviar[parteEntera],
+        infoEnviar2[parteEntera + 1];
+
+    registros = fopen(parametros->logfile, "r"); 
     if ((int)sobras == 0) 
     {
         for (int x = 0; x < maps; x++)
@@ -270,19 +272,27 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
 }
 int map(char nombrePipe[], struct Parametros *parametros, int contador)
 {
-    int fd, key = 0, valor = 0, fdB;
-    double numCambio = encontrarCambiante(parametros);
-    int maps = parametros->nmappers; 
-    int line = parametros->lineas;   
-    int contadorLineasBuffer = 0;
-    double lineasArchivos = ((double)line) / ((double)maps); 
+    int fd, 
+        key = 0, 
+        valor = 0, 
+        fdB,
+        maps = parametros->nmappers,
+        line = parametros->lineas,
+        contadorLineasBuffer = 0;
+    double numCambio = encontrarCambiante(parametros),
+        lineasArchivos = ((double)line) / ((double)maps); 
     int parteEntera = ((int)lineasArchivos);                 
     char nombreBuf[15], lineaPipeActual[1000], *token;
+    pMapper infoDelPipe[parteEntera];
+    struct Consulta consulta;
+    BufferP bufferActual[parteEntera];
+    BufferP informacionEnviar[parteEntera];
+
     if (contador < numCambio)
     {
         parteEntera++;
     }
-    pMapper infoDelPipe[parteEntera];
+
     fd = open(nombrePipe, O_RDONLY);
     if (fd == -1)
     {
@@ -290,15 +300,11 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
         return -1;
     }
     read(fd, &infoDelPipe, sizeof(pMapper) * (parteEntera));
-    struct Consulta consulta;
-    BufferP bufferActual[parteEntera];
     for (int i = 0; i < parteEntera; i++)
     {
         bufferActual[i].key = 0;
         bufferActual[i].valor = 0;
     }
-
-    BufferP informacionEnviar[parteEntera];
     sprintf(nombreBuf, "Buf_%d", contador); 
     fdB = open(nombreBuf, O_WRONLY);        
     if (fdB == -1)
@@ -395,6 +401,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
     close(fdB); 
     return 0;
 }
+
 double calcularSobrasReduce(int mapers, int reducers) 
 {
 
@@ -408,12 +415,12 @@ int contarLineas(char noombreArch[])
 {
     char ch;                            
     FILE *fp = fopen(noombreArch, "r"); 
+    int lineas = 0;
     if (fp == NULL)
     {
         perror("Error: no se pudo abrir el archivo");
         exit(0);
     }
-    int lineas = 0;   
     while (ch != EOF) 
     {
         ch = getc(fp); 
@@ -435,21 +442,26 @@ long double hallarNumeroOutput(long double reducer, long double pEntera, long do
 }
 void reduce(struct Parametros *parametros, int reduceActual) 
 {
-    int mapers = parametros->nmappers;                   
-    int reducers = parametros->nreducers;                
-    double sobras = calcularSobrasReduce(mapers, reducers); 
-    sobras = sobras + 0.55;
-    int lineas = 0, auxLineas = 0;                       
-    int fd, fdB, key, valor;
+    int mapers = parametros->nmappers,
+        reducers = parametros->nreducers,
+        lineas = 0, 
+        auxLineas = 0, 
+        fd, 
+        fdB, 
+        key, 
+        valor,
+        corrector;                                
+    double sobras = calcularSobrasReduce(mapers, reducers) + 0.55;                  
     float cantidadDeArchivos = mapers / reducers; 
     int parteEntera = (int)cantidadDeArchivos;    
     int parteEntera2 = parametros->lineas / mapers;
-    char nombreBuf[15], nombrePipeOut[15]; 
+    char nombreBuf[15], 
+        nombrePipeOut[15],
+        nombreArchivoRegistros[20]; 
     double numCambio = encontrarCambiante(parametros);
     pReducer pipeR;
     FILE *archivoRegistro;
     BufferP bufferActual[parteEntera2];
-    char nombreArchivoRegistros[20];
     if ((int)sobras == 0) 
     {
         sprintf(nombreArchivoRegistros,"intermedio_%d.txt", reduceActual);
@@ -461,7 +473,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
             perror("Error: no se pudo abrir el pipe del reduce");
             exit(0);
         }
-        int corrector = reduceActual * (parteEntera); 
+        corrector = reduceActual * (parteEntera); 
         for (int j = 0; j < parteEntera; j++)
         {
             BufferP bufferActual[parteEntera2];
@@ -473,7 +485,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
                 exit(0);
             }
             read(fdB, &bufferActual, sizeof(BufferP) * parteEntera2);
-            int corrector = reduceActual * parteEntera; 
+            corrector = reduceActual * parteEntera; 
             for (int i = 0; i < parteEntera2; i++)      
             {
                 if (bufferActual[i].key != 0)
@@ -493,7 +505,6 @@ void reduce(struct Parametros *parametros, int reduceActual)
         close(fdB);
         fclose(archivoRegistro);
     }
-
     if ((int)sobras != 0) 
     {
         if (reduceActual < (int)sobras) 
@@ -507,7 +518,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
                 perror("Error: no se pudo abrir el pipe del reduce");
                 exit(0);
             }
-            int corrector = reduceActual * (parteEntera + 1); 
+            corrector = reduceActual * (parteEntera + 1); 
             for (int j = 0; j <parteEntera + 1; j++)
             {
                 BufferP bufferActual[parteEntera2+1];
@@ -542,7 +553,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
             sobras++;
         }
         else
-        
+    
         {
             sprintf(nombreArchivoRegistros,"intermedio_%d.txt", reduceActual);
             archivoRegistro =  fopen(nombreArchivoRegistros, "a");   
@@ -557,7 +568,6 @@ void reduce(struct Parametros *parametros, int reduceActual)
             {
                 long double po = j + hallarNumeroOutput(((((long double)mapers / (long double)reducers) - (long double)parteEntera) * (long double)reducers), parteEntera, reduceActual);
                 po = po + 0.55;
-                
                 sprintf(nombreBuf, "Buf_%d", (int)po);
                 fdB = open(nombreBuf, O_RDONLY);
                 if (fdB == -1)
@@ -568,7 +578,6 @@ void reduce(struct Parametros *parametros, int reduceActual)
                 read(fdB, &bufferActual, sizeof(BufferP) * parteEntera2);
                 for (int i = 0; i < parteEntera2; i++) 
                 {
-                    
                     if (bufferActual[i].key != 0)
                     {
                         if (parametros->intermedios == 1)
@@ -617,8 +626,9 @@ int calcularValorFinal(struct Parametros *parametros)
 {
     pReducer infoRecibida;
     char nombreRedu[15];
-    int fd, contador = 0;
-    int reducers = parametros->nreducers;
+    int fd, 
+        contador = 0,
+        reducers = parametros->nreducers;
     for (int i = 0; i < reducers; i++)
     {
         sprintf(nombreRedu, "pipeR_%d", i);
@@ -633,31 +643,32 @@ int calcularValorFinal(struct Parametros *parametros)
 }
 int master(struct Parametros *parametros, struct Consulta *consulta) 
 {
-    int validacionConsulta, validacionAsigPipe1;
+    int validacionConsulta = interpretarConsulta(consulta), 
+        validacionAsigPipe1,
+        valorFinal,
+        reducers = parametros->nreducers,
+        maps = parametros->nmappers,
+        id,
+        idR;
     struct timeval tiempo_i, tiempo_f, tiempo_tot; 
-    validacionConsulta = interpretarConsulta(consulta);
     char nombrePipe[15];
-    int maps = parametros->nmappers;
-    int reducers = parametros->nreducers;
-    int valorFinal;
+
     if (validacionConsulta == -1)
     {
         printf("ERROR: ocurrio un error inesperado en la lectura de la consulta\n");
         return -1;
     }
-
     gettimeofday(&tiempo_i, NULL);                                    
     validacionAsigPipe1 = asignacionPipeMapper(parametros, consulta); 
-
+    
     if (validacionAsigPipe1 == -1)
     {
         printf("ERROR: ocurrio un error inesperado en la asignacion del pipe 1\n");
         return -1;
     }
-
     for (int i = 0; i < parametros->nmappers; i++) 
     {
-        int id = fork(); 
+        id = fork(); 
         if (id == 0)
         {
             sprintf(nombrePipe, "pipeM_%d", i); 
@@ -669,10 +680,9 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
             wait(NULL); 
         }
     }
-
     for (int i = 0; i < parametros->nreducers; i++) 
     {
-        int idR = fork(); 
+        idR = fork(); 
         if (idR == 0)
         {
             reduce(parametros, i); 
@@ -691,19 +701,26 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
     printf("el valor final es: %d\n", valorFinal);
     return 0;
 }
+
 int main(int argc, char *argv[])
 {
-    int condicional = 0, opcion_menu, resultado, numMappers = atoi(argv[3]), numReducers = atoi(argv[4]), banderaPipe;
+    int condicional = 0, 
+        opcion_menu, 
+        resultado, 
+        numMappers = atoi(argv[3]), 
+        numReducers = atoi(argv[4]), 
+        banderaPipe;
+
     struct Parametros *parametros = (struct Parametros *)malloc(sizeof(struct Parametros)); 
     struct Consulta consulta;                                                               
-    char nombrePipe[15], nombrepipeBuffer[15];
+    char nombrePipe[15], 
+        nombrepipeBuffer[15];
 
     if (argc < 6) 
     {
         printf("Alerta los datos se ingresaron de manera erronea\n");
         exit(0);
     }
-
     strncpy(parametros->logfile, argv[1], PATH_MAX); 
     parametros->lineas = atoi(argv[2]);
     parametros->nmappers = atoi(argv[3]);
@@ -739,7 +756,6 @@ int main(int argc, char *argv[])
         }
         close(banderaPipe);
     }
-
     if (parametros->nmappers < parametros->nreducers)
     {
         printf("ERROR: los mappers son menores a los reducers\n");

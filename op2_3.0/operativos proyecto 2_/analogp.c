@@ -11,11 +11,22 @@
 #include <wait.h>
 #include "auxanalogp.h"
 
+# define timersub(a, b, result)						      \
+  do {									      \
+    (result)->tv_sec = (a)->tv_sec - (b)->tv_sec;			      \
+    (result)->tv_usec = (a)->tv_usec - (b)->tv_usec;			      \
+    if ((result)->tv_usec < 0) {					      \
+      --(result)->tv_sec;						      \
+      (result)->tv_usec += 1000000;					      \
+    }									      \
+  } while (0)
+
 int verificarInt(char segmento[])
 {
     int siEs = 0;   
-    int tamano = strlen(segmento);
-    for (int i = 0; i < tamano; i++) 
+    int tamano = strlen(segmento),
+        i;
+    for ( i = 0; i < tamano; i++) 
     {
         if (!isdigit(segmento[i])) 
         {
@@ -53,11 +64,12 @@ int impresion_menu()
 }
 bool isInteger(char *str) 
 {
-    int i, len = strlen(str);
+    int i, 
+        len = strlen(str);
 
     if (len == 0)
         return (false);
-    for (int i = 0; i < len; i++)
+    for ( i = 0; i < len; i++)
     {
         if (str[i] != '0' && str[i] != '1' && str[i] != '2' && str[i] != '3' && str[i] != '4' && str[i] != '5' && str[i] != '6' && str[i] != '7' && str[i] != '8' && str[i] != '9' || (str[i] == '-' && i > 0))
             return (false);
@@ -73,8 +85,9 @@ int interpretarConsulta(struct Consulta *consulta)
     printf("\nIngrese la consulta de la forma: (numero columna, signo, valor)");
     printf("\n");
     scanf("%s", ff);              
-    int comas = 0;                
-    for (int i = 0; i < 100; i++) 
+    int comas = 0,
+        i;                
+    for ( i = 0; i < 100; i++) 
     {
         if (ff[i] == ',') 
         {
@@ -142,7 +155,9 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
     int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, 
         fd, 
         parteEntera = ((int)lineasArchivos), 
-        auxSobrantes = 0 ;     
+        auxSobrantes = 0,
+        x,
+        z;     
                                                 
     char nombrePipe[15], lineaArchivo[1000];
     pMapper infoEnviar[parteEntera],
@@ -151,7 +166,7 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
     registros = fopen(parametros->logfile, "r"); 
     if ((int)sobras == 0) 
     {
-        for (int x = 0; x < maps; x++)
+        for ( x = 0; x < maps; x++)
         {
             sprintf(nombrePipe, "pipeM_%d", x);
             fd = open(nombrePipe, O_WRONLY);
@@ -160,7 +175,7 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
                 perror("Error: no se pudo abrir el pipe");
                 return -1;
             }
-            for (int z = 0; z < parteEntera; z++) 
+            for ( z = 0; z < parteEntera; z++) 
             {
                 fscanf(registros, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r);
                 infoEnviar[z].consul.columna = consulta->columna;
@@ -195,9 +210,9 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
     {
         printf("\nADVERTENCIA: la divicion entre mapers y las lineas totales no es exacta");
         printf("\nse hara el reparto lo mas equilibrado posible\n");
-        for (int z = 0; z < maps; z++)
+        for ( x = 0; x < maps; x++)
         {
-            sprintf(nombrePipe, "pipeM_%d", z); 
+            sprintf(nombrePipe, "pipeM_%d", x); 
             fd = open(nombrePipe, O_WRONLY);    
             if (fd == -1)
             {
@@ -207,7 +222,7 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
             if (auxSobrantes < (int)sobras)
             {
                 auxSobrantes++;
-                for (int z = 0; z < parteEntera + 1; z++) 
+                for ( z = 0; z < parteEntera + 1; z++) 
                 {
                     fscanf(registros, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r);
                     infoEnviar2[z].consul.columna = consulta->columna;
@@ -237,7 +252,7 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
             }
             else 
             {
-                for (int z = 0; z < parteEntera; z++) 
+                for ( z = 0; z < parteEntera; z++) 
                 {
                     fscanf(registros, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r);
                     infoEnviar[z].consul.columna = consulta->columna;
@@ -278,7 +293,9 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
         fdB,
         maps = parametros->nmappers,
         line = parametros->lineas,
-        contadorLineasBuffer = 0;
+        contadorLineasBuffer = 0,
+        i,
+        v;
     double numCambio = encontrarCambiante(parametros),
         lineasArchivos = ((double)line) / ((double)maps); 
     int parteEntera = ((int)lineasArchivos);                 
@@ -300,7 +317,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
         return -1;
     }
     read(fd, &infoDelPipe, sizeof(pMapper) * (parteEntera));
-    for (int i = 0; i < parteEntera; i++)
+    for ( i = 0; i < parteEntera; i++)
     {
         bufferActual[i].key = 0;
         bufferActual[i].valor = 0;
@@ -312,7 +329,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
         perror("Error: no se pudo abrir el pipe del buffer");
         exit(0);
     }
-    for (int v = 0; v < parteEntera; v++)
+    for ( v = 0; v < parteEntera; v++)
     {
         consulta.columna = infoDelPipe[v].consul.columna;
         consulta.signo = infoDelPipe[v].consul.signo;
@@ -323,7 +340,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                 infoDelPipe[v].r);
         token = strtok(lineaPipeActual, " "); 
         key = atoi(token);                    
-        for (int i = 1; i <= 18; i++)         
+        for ( i = 1; i <= 18; i++)         
         {
             switch (consulta.signo) 
             {
@@ -449,7 +466,9 @@ void reduce(struct Parametros *parametros, int reduceActual)
         fdB, 
         key, 
         valor,
-        corrector;                                
+        corrector,
+        j,
+        i;                                
     double sobras = calcularSobrasReduce(mapers, reducers) + 0.55;                  
     float cantidadDeArchivos = mapers / reducers; 
     int parteEntera = (int)cantidadDeArchivos;    
@@ -473,7 +492,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
             exit(0);
         }
         corrector = reduceActual * (parteEntera); 
-        for (int j = 0; j < parteEntera; j++)
+        for ( j = 0; j < parteEntera; j++)
         {
             BufferP bufferActual[parteEntera2];
             sprintf(nombreBuf, "Buf_%d", corrector + j);
@@ -485,7 +504,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
             }
             read(fdB, &bufferActual, sizeof(BufferP) * parteEntera2);
             corrector = reduceActual * parteEntera; 
-            for (int i = 0; i < parteEntera2; i++)      
+            for ( i = 0; i < parteEntera2; i++)      
             {
                 if (bufferActual[i].key != 0)
                 {
@@ -518,7 +537,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
                 exit(0);
             }
             corrector = reduceActual * (parteEntera + 1); 
-            for (int j = 0; j <parteEntera + 1; j++)
+            for ( j = 0; j <parteEntera + 1; j++)
             {
                 BufferP bufferActual[parteEntera2+1];
                 sprintf(nombreBuf, "Buf_%d", corrector + j);
@@ -529,7 +548,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
                     exit(0);
                 }
                 read(fdB, &bufferActual, sizeof(BufferP) * (parteEntera2+1));
-                for (int i = 0; i < parteEntera2+1; i++) 
+                for ( i = 0; i < parteEntera2+1; i++) 
                 {
                     
                     
@@ -563,7 +582,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
                 perror("Error: no se pudo abrir el pipe del reduce");
                 exit(0);
             }
-            for (int j = 0; j < parteEntera; j++)
+            for ( j = 0; j < parteEntera; j++)
             {
                 long double po = j + hallarNumeroOutput(((((long double)mapers / (long double)reducers) - (long double)parteEntera) * (long double)reducers), parteEntera, reduceActual);
                 po = po + 0.55;
@@ -575,7 +594,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
                     exit(0);
                 }
                 read(fdB, &bufferActual, sizeof(BufferP) * parteEntera2);
-                for (int i = 0; i < parteEntera2; i++) 
+                for ( i = 0; i < parteEntera2; i++) 
                 {
                     if (bufferActual[i].key != 0)
                     {
@@ -598,24 +617,25 @@ void reduce(struct Parametros *parametros, int reduceActual)
 }
 void borrarArchivos(struct Parametros *parametros)
 {
-    int contador = 0;
+    int contador = 0,
+        i;
     char nombreArch[20];
-    for (int i = 0; i < parametros->nmappers; i++)
+    for ( i = 0; i < parametros->nmappers; i++)
     {
         sprintf(nombreArch, "pipeM_%d", i);
         remove(nombreArch);
     }
-    for (int i = 0; i < parametros->nmappers; i++)
+    for ( i = 0; i < parametros->nmappers; i++)
     {
         sprintf(nombreArch, "Buf_%d", i);
         remove(nombreArch);
     }
-    for (int i = 0; i < parametros->nreducers; i++)
+    for ( i = 0; i < parametros->nreducers; i++)
     {
         sprintf(nombreArch, "pipeR_%d", i);
         remove(nombreArch);
     }
-    for (int i = 0; i < parametros->nreducers; i++)
+    for ( i = 0; i < parametros->nreducers; i++)
     {
         sprintf(nombreArch, "intermedio_%d.txt", i);
         remove(nombreArch);
@@ -627,8 +647,9 @@ int calcularValorFinal(struct Parametros *parametros)
     char nombreRedu[15];
     int fd, 
         contador = 0,
-        reducers = parametros->nreducers;
-    for (int i = 0; i < reducers; i++)
+        reducers = parametros->nreducers,
+        i;
+    for ( i = 0; i < reducers; i++)
     {
         sprintf(nombreRedu, "pipeR_%d", i);
         fd = open(nombreRedu, O_RDONLY);
@@ -648,7 +669,8 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
         reducers = parametros->nreducers,
         maps = parametros->nmappers,
         id,
-        idR;
+        idR,
+        i;
     struct timeval tiempo_i, tiempo_f, tiempo_tot; 
     char nombrePipe[15];
 
@@ -665,7 +687,7 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
         printf("ERROR: ocurrio un error inesperado en la asignacion del pipe 1\n");
         return -1;
     }
-    for (int i = 0; i < parametros->nmappers; i++) 
+    for ( i = 0; i < parametros->nmappers; i++) 
     {
         id = fork(); 
         if (id == 0)
@@ -679,7 +701,7 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
             wait(NULL); 
         }
     }
-    for (int i = 0; i < parametros->nreducers; i++) 
+    for ( i = 0; i < parametros->nreducers; i++) 
     {
         idR = fork(); 
         if (idR == 0)
@@ -708,7 +730,8 @@ int main(int argc, char *argv[])
         resultado, 
         numMappers = atoi(argv[3]), 
         numReducers = atoi(argv[4]), 
-        banderaPipe;
+        banderaPipe,
+        i;
 
     struct Parametros *parametros = (struct Parametros *)malloc(sizeof(struct Parametros)); 
     struct Consulta consulta;                                                               
@@ -720,15 +743,15 @@ int main(int argc, char *argv[])
         printf("Alerta los datos se ingresaron de manera erronea\n");
         exit(0);
     }
-    strncpy(parametros->logfile, argv[1], PATH_MAX); 
+    strncpy(parametros->logfile, argv[1], 4096); 
     parametros->lineas = atoi(argv[2]);
     parametros->nmappers = atoi(argv[3]);
     parametros->nreducers = atoi(argv[4]);
     parametros->intermedios = atoi(argv[5]);
-    for (int i = 0; i < numMappers; i++)
+    for ( i = 0; i < numMappers; i++)
     {
         sprintf(nombrePipe, "pipeM_%d", i);
-        banderaPipe = open(nombrePipe, O_CREAT, S_IRUSR | S_IWUSR);
+        banderaPipe = open(nombrePipe, O_CREAT, 0400 | 0200);
         if (banderaPipe == -1)
         {
             perror("pipe");
@@ -737,17 +760,17 @@ int main(int argc, char *argv[])
         close(banderaPipe);
 
         sprintf(nombrepipeBuffer, "Buf_%d", i);
-        banderaPipe = open(nombrepipeBuffer, O_CREAT, S_IRUSR | S_IWUSR);
+        banderaPipe = open(nombrepipeBuffer, O_CREAT, 0400 | 0200);
         if (banderaPipe == -1)
         {
             perror("pipe");
             exit(1);
         }
     }
-    for (int i = 0; i < numReducers; i++)
+    for ( i = 0; i < numReducers; i++)
     {
         sprintf(nombrePipe, "pipeR_%d", i);
-        banderaPipe = open(nombrePipe, O_CREAT, S_IRUSR | S_IWUSR);
+        banderaPipe = open(nombrePipe, O_CREAT, 0400 | 0200);
         if (banderaPipe == -1)
         {
             perror("pipe");

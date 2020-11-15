@@ -2,4 +2,4 @@
 ALL: analogp
 
 analogp: analogp.c auxanalogp.h
-	gcc -o analogp analogp.c
+	gcc -std=c89 analogp.c -o analogp

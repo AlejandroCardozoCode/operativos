@@ -1,18 +1,18 @@
 #include <limits.h>
 
-struct Parametros //estructura que contiene los parametros ingresados por el usuario
+struct Parametros 
 {
-    char logfile[PATH_MAX]; 
-    int lineas;             //numero de lineas del registro
-    int nmappers;           //numero de mappers que desea el usuario
-    int nreducers;          //numero de reducers que solicita el usuario
-    int intermedios;        //numero de archivos intermedios definidos por usuario
+    char logfile[4096]; 
+    int lineas;             
+    int nmappers;           
+    int nreducers;          
+    int intermedios;        
 };
 
 struct Consulta
 {
   int columna;
-  int signo; // 0 = >, 1 = <, 2 = >=, 3 = <=, 4 = = 
+  int signo; 
   int valor;
 };
 

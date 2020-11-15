@@ -7,10 +7,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/types.h>
-#include "main.h"
 #include <signal.h>
 #include <wait.h>
-
 
 typedef struct arreglopipe
 {
@@ -19,43 +17,42 @@ typedef struct arreglopipe
     int g;
 } arreglo;
 
-void signalHandler(int x)
-{
-
-  printf("El proceso central recibio la señal SIGUSR1\n");
-  //free(&x);
-  exit(0);
-}
-
-void hijo(int x)
-{
-    signal(SIGUSR1,signalHandler);
-    printf("soy el hijo\n");
-    int j = x;
-    pause();
-    signalHandler(j);
-}
-
 int main(int argc, char *argv[])
 {
-    int id, status;
+    char nombrepipe[20];
+    mode_t fifo_mode = S_IRUSR | S_IWUSR;
+    int fd
+        , x,
+        z,
+        ff;
     for (int i = 0; i < 3; i++)
     {
-        id = fork();
-        if (id == 0)
+        sprintf(nombrepipe, "pipe_%d", i);
+        ff = mknod(nombrepipe, S_IFIFO | S_IRUSR | S_IWUSR ,0);
+        if (ff == -1)
         {
-            hijo(i);
+           perror("error en el mknod\n");
+           exit(0);
         }
-        else
-        {
-            wait(NULL); //el programa espera a que los procesos acaben la asignacion de los datos
-        }
+        
     }
-    int senal_1  = kill(id, SIGUSR1);
-    for (int i = 0; i < 2; i++)
-     {
-        wait(&status);
-        exit(0);
+
+    for (int i = 0; i < 3; i++)
+    {
+        x = i;
+        sprintf(nombrepipe, "pipe_%d", i);
+        fd = open(nombrepipe, O_WRONLY);
+        printf("el valor de x es igula a: %d\n",x);
+        write(fd, &x, sizeof(int));
+        close(fd);
+    }
+    for (int i = 0; i < 3; i++)
+    {
+        sprintf(nombrepipe, "pipe_%d", i);
+        fd = open(nombrepipe, O_RDONLY);
+        read(fd, &z, sizeof(int));
+        printf("el valor de x es igula a: %d\n",z);
+        close(fd);
     }
     
 }

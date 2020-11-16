@@ -8,7 +8,8 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <signal.h>
-#include <wait.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 typedef struct arreglopipe
 {
@@ -17,33 +18,43 @@ typedef struct arreglopipe
     int g;
 } arreglo;
 
-void escribirPipe(int i)
+void escribirPipe(int i, char nombreAuxContador[])
 {
     int x,
-        fd;
+        fd,
+        valorContador;
+    FILE *contador;
     x = i * i;
     char nombrepipe[20];
     sprintf(nombrepipe, "pipe_%d", i);
-    fd = open(nombrepipe, O_WRONLY);
-    if (fd == -1)
+    for (int i = 0; i < 3; i++)
     {
-        perror("pipe");
-        exit(0);
-    }
-    if (write(fd, &x, sizeof(int)) == -1)
-    {
-        perror("pipe 3");
-        exit(0);
+        fd = open(nombrepipe, O_WRONLY);
+        if (fd == -1)
+        {
+            perror("pipe");
+            exit(0);
+        }
+        if (write(fd, &x, sizeof(int)) == -1)
+        {
+            perror("pipe 3");
+            exit(0);
+        }
     }
     close(fd);
+    contador = fopen(nombreAuxContador, "a");
+    fprintf(contador, "%d\n", 1);
+    fclose(contador);
     return;
 }
 
-void leerPipe(int i)
+void leerPipe(int i, char nombreAuxContador[])
 {
     int fd,
-        z;
+        z,
+        valorContador;
     char nombrepipe[20];
+    FILE *contador;
     sprintf(nombrepipe, "pipe_%d", i);
     fd = open(nombrepipe, O_RDONLY);
     if (fd == -1)
@@ -56,8 +67,12 @@ void leerPipe(int i)
         perror("pipe 3");
         exit(0);
     }
-    printf("el valor de x es igula a: %d\n", z);
+    printf("el valor de x es igual a: %d\n", z);
     close(fd);
+    contador = fopen(nombreAuxContador, "a");
+    fprintf(contador, "%d\n", 1);
+    fclose(contador);
+    return;
 }
 
 int main(int argc, char *argv[])
@@ -66,8 +81,14 @@ int main(int argc, char *argv[])
     int fd,
         x,
         z,
-        id;
-    char nombrepipe[20];
+        id,
+        contador = 0,
+        continuar = 0,
+        lines,
+        ch;
+    char nombrepipe[20],
+        nombreaux[20] = "kjkhjkh.txt";
+    FILE *ff;
     for (int i = 0; i < 3; i++)
     {
         sprintf(nombrepipe, "pipe_%d", i);
@@ -78,7 +99,7 @@ int main(int argc, char *argv[])
         id = fork();
         if (id == 0)
         {
-            escribirPipe(i);
+            escribirPipe(i, nombreaux);
             exit(0);
         }
     }
@@ -87,8 +108,27 @@ int main(int argc, char *argv[])
         id = fork();
         if (id == 0)
         {
-            leerpipe(i);
+            leerPipe(i, nombreaux);
             exit(0);
         }
     }
+    while (continuar == 0)
+    {
+        ff = fopen(nombreaux, "r");
+        while (!feof(ff))
+        {
+            ch = fgetc(ff);
+            if (ch == '\n')
+            {
+                lines++;
+            }
+        }
+        if (lines == 6)
+        {
+            continuar = 1;
+        }
+        lines = 0;
+        fclose(ff);
+    }
+    remove(nombreaux);
 }

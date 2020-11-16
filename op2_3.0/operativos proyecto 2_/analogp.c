@@ -184,62 +184,40 @@ double encontrarCambiante(struct Parametros *parametros)
 
     return sobras;
 }
-void imprimirPipe1(int contadorImp, int parteEntera, int sobras, pMapper infoRecibida, pMapper infoRecibida2, char nombrePipe[])
 
+void liberarPipe(int c, char nombreAuxContador[], int parteEntera, int condicion)
 {
-
-    int fd,
-        z;
-    printf("imprimiendo los datos del pipe %d\n", contadorImp);
-    if (contadorImp < sobras)
+    if (condicion == 1)
     {
-        fd = open(nombrePipe, O_RDONLY);
-        read(fd, &infoRecibida, sizeof(pMapper) * (parteEntera + 1));
-        for (z = 0; z < parteEntera + 1; z++)
+        int fd,
+            valorContador,
+            i;
+        char nombrepipe[20];
+        FILE *fix;
+        pMapper z[parteEntera + 1];
+        sprintf(nombrepipe, "pipeM_%d", c);
+        fd = open(nombrepipe, O_RDONLY);
+        if (fd == -1)
         {
-            printf("el valor de el primer dato es: %d el valor del segundo dato es: %d y el valor del tercer dato es: %d \n", infoRecibida2.a, infoRecibida2.b, infoRecibida2.c);
+            perror("no se puede abrir el pipe dela funcion de leerPipe");
+            exit(0);
+        }
+        if (read(fd, &z, sizeof(pMapper) * (parteEntera + 1)) == -1)
+        {
+            perror("no se puede leer el pipe dela funcion de leerPipe");
+            exit(0);
+        }
+        for (i = 0; i < parteEntera + 1; i++)
+        {
+
+            printf("el primer valor del pipeM_%d es: %d el segundo es: %d y el tercero es: %d\n", c, z[i].a, z[i].b, z[i].c);
         }
         close(fd);
-        contadorImp++;
+        fix = fopen(nombreAuxContador, "a");
+        fprintf(fix, "%d\n", 1);
+        fclose(fix);
     }
-    else
-    {
-        fd = open(nombrePipe, O_RDONLY);
-        read(fd, &infoRecibida2, sizeof(pMapper) * (parteEntera));
-        for (z = 0; z < parteEntera; z++)
-        {
-            printf("el valor de el primer dato es: %d el valor del segundo dato es: %d y el valor del tercer dato es: %d \n", infoRecibida2.a, infoRecibida2.b, infoRecibida2.c);
-        }
-        close(fd);
-    }
-    return;
-}
-void leerPipe(int c, char nombreAuxContador[], int parteEntera)
-{
-    int fd,
-        valorContador,
-        i;
-    char nombrepipe[20];
-    FILE *fix;
-    pMapper z[parteEntera + 1];
-    sprintf(nombrepipe, "pipeM_%d", i);
-    fd = open(nombrepipe, O_RDONLY);
-    if (fd == -1)
-    {
-        perror("pipe");
-        exit(0);
-    }
-    if (read(fd, &z, sizeof(pMapper) * (parteEntera + 1)) == -1)
-    {
-        perror("pipe 3");
-        exit(0);
-    }
-    close(fd);
 
-    fix = fopen(nombreAuxContador, "a");
-    fprintf(fix, "%d\n", 1);
-    fclose(fix);
-    printf("se leyo la informacin en el pipe\n");
     return;
 }
 int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consulta, char nombreaux[])
@@ -250,6 +228,7 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
     int line = parametros->lineas;
     double lineasArchivos = ((double)line) / ((double)maps);
     double sobras = encontrarCambiante(parametros);
+    sobras = sobras + 0.55;
     int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r,
         fd,
         parteEntera = ((int)lineasArchivos),
@@ -387,7 +366,6 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
     fix = fopen(nombreaux, "a");
     fprintf(fix, "%d\n", 1);
     fclose(fix);
-    printf("se escribio la informacin en el pipe\n");
     /*
     pMapper infoRecibida[parteEntera + 1];
     pMapper infoRecibida2[parteEntera];
@@ -418,7 +396,7 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
 
     return 0;
 }
-int map(char nombrePipe[], struct Parametros *parametros, int contador)
+int map(char nombrePipe[], struct Parametros *parametros, int contador, char nombreAux[])
 {
     int fd,
         key = 0,
@@ -438,6 +416,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
     struct Consulta consulta;
     BufferP bufferActual[parteEntera];
     BufferP informacionEnviar[parteEntera];
+    FILE *fix;
 
     if (contador < numCambio)
     {
@@ -550,19 +529,10 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
     write(fdB, &informacionEnviar, sizeof(BufferP) * parteEntera);
     close(fd);
     close(fdB);
-    char nombrePipeOut[15];
-    BufferP infoEntrante[(parteEntera + 1)];
-    for (i = 0; i < parametros->nmappers; i++)
-    {
-        sprintf(nombrePipeOut, "Buf_%d", i);
-        fd = open(nombrePipeOut, O_RDONLY);
-        read(fd, &infoEntrante, sizeof(BufferP) * (parteEntera + 1));
-        for (j = 0; j < (parteEntera + 1); j++)
-        {
-            printf("el valor del buffer %d es: %d, %d\n", i, infoEntrante[j].key, infoEntrante[j].valor);
-        }
-    }
 
+    fix = fopen(nombreAux, "a");
+    fprintf(fix, "%d\n", 1);
+    fclose(fix);
     return 0;
 }
 double calcularSobrasReduce(int mapers, int reducers)
@@ -825,7 +795,8 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
         maps = parametros->nmappers,
         id,
         idR,
-        i;
+        i,
+        parteEntera = (int)(parametros->lineas / parametros->nmappers);
     struct timeval tiempo_i, tiempo_f, tiempo_tot;
     char nombrePipe[15],
         nombreaux[20] = "fix.txt";
@@ -843,6 +814,11 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
         if (id == 0)
         {
             validacionAsigPipe1 = asignacionPipeMapper(parametros, consulta, nombreaux);
+            if (validacionAsigPipe1 == -1)
+            {
+                printf("ERROR: ocurrio un error inesperado en la asignacion del pipe 1\n");
+                return -1;
+            }
             exit(0);
         }
     }
@@ -852,32 +828,35 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
         id = fork();
         if (id == 0)
         {
-            leerPipe(i, nombreaux, 43);
+            liberarPipe(i, nombreaux, parteEntera, 1);
             exit(0);
         }
     }
+    esperaProcesos(nombreaux, (parametros->nmappers + 1));
+    printf("llego hasta aqui\n");
 
-    esperaProcesos(nombreaux, 2);
-    printf("acabaron los procesos\n");
-    exit(0);
-
-    /*printf("llego hasta aqui\n");
-    if (validacionAsigPipe1 == -1)
-    {
-        printf("ERROR: ocurrio un error inesperado en la asignacion del pipe 1\n");
-        return -1;
-    }
     for (i = 0; i < parametros->nmappers; i++)
     {
         id = fork();
         if (id == 0)
         {
             sprintf(nombrePipe, "pipeM_%d", i);
-            map(nombrePipe, parametros, i);
+            map(nombrePipe, parametros, i, nombreaux);
 
             exit(0);
         }
     }
+
+    for (i = 0; i < parametros->nmappers; i++)
+    {
+        id = fork();
+        if (id == 0)
+        {
+            liberarPipe(i, nombreaux, parteEntera, 2);
+            exit(0);
+        }
+    }
+    /*
     printf("llego hasta aqui\n");
     for (i = 0; i < parametros->nreducers; i++)
     {
@@ -929,7 +908,6 @@ int main(int argc, char *argv[])
 
         sprintf(nombrePipe, "pipeM_%d", i);
         banderaPipe = mknod(nombrePipe, 0010000 | 0400 | 0200, 0);
-        printf("el valor de la vandera del pipe es: %d\n", banderaPipe);
         if (banderaPipe == -1)
         {
             if (errno = !EEXIST)

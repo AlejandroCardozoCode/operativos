@@ -63,7 +63,7 @@ void esperaProcesos(char nombreaux[], int cantidadEsperar)
         lineas = 0;
         fclose(ff);
     }
-    remove(nombreaux);
+    /*remove(nombreaux);*/
 }
 
 int impresion_menu()
@@ -190,7 +190,6 @@ void liberarPipe(int c, char nombreAuxContador[], int parteEntera, int condicion
     if (condicion == 1)
     {
         int fd,
-            valorContador,
             i;
         char nombrepipe[20];
         FILE *fix;
@@ -209,14 +208,57 @@ void liberarPipe(int c, char nombreAuxContador[], int parteEntera, int condicion
         }
         for (i = 0; i < parteEntera + 1; i++)
         {
-
-            printf("el primer valor del pipeM_%d es: %d el segundo es: %d y el tercero es: %d\n", c, z[i].a, z[i].b, z[i].c);
+            /*printf("el primer valor del pipeM_%d es: %d el segundo es: %d y el tercero es: %d\n", c, z[i].a, z[i].b, z[i].c);*/
         }
         close(fd);
         fix = fopen(nombreAuxContador, "a");
         fprintf(fix, "%d\n", 1);
         fclose(fix);
     }
+
+    if (condicion == 2)
+    {
+        int fd,
+            i;
+        char nombrepipe[20];
+        FILE *fix;
+        pMapper z[parteEntera + 1];
+        BufferP zz[parteEntera + 1];
+        sprintf(nombrepipe, "pipeM_%d", c);
+        printf("se va a abrir el pipeM_%d en modo de escritura\n",c);
+        fd = open(nombrepipe, O_WRONLY);
+        if (fd == -1)
+        {
+            perror("no se puede abrir el pipe dela funcion de leerPipe");
+            exit(0);
+        }
+        if (write(fd, &z, sizeof(pMapper) * (parteEntera + 1)) == -1)
+        {
+            perror("no se puede leer el pipe dela funcion de leerPipe");
+            exit(0);
+        }
+        printf("se escribioen el pipeM_%d\n",c);
+        sprintf(nombrepipe, "Buf_%d", c);
+        printf("se va a abrir el Buf_%d en modo de lectura\n",c);
+        fd = open(nombrepipe, O_RDONLY);
+        if (fd == -1)
+        {
+            perror("no se puede abrir el pipe dela funcion de leerPipe");
+            exit(0);
+        }
+        if (read(fd, &zz, sizeof(BufferP) * (parteEntera + 1)) == -1)
+        {
+            perror("no se puede leer el pipe dela funcion de leerPipe");
+            exit(0);
+        }
+        printf("se leyo en el Buf_%d\n",c);
+        close(fd);
+        fix = fopen(nombreAuxContador, "a");
+        printf("se esta escribiendo en fix en la funcion de liberarPipe\n");
+        fprintf(fix, "%d\n", 1);
+        fclose(fix);
+    }
+    
 
     return;
 }
@@ -407,22 +449,25 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
         contadorLineasBuffer = 0,
         i,
         v,
-        j;
+        j,
+        fx;
     double numCambio = encontrarCambiante(parametros),
            lineasArchivos = ((double)line) / ((double)maps);
+           
     int parteEntera = ((int)lineasArchivos);
     char nombreBuf[15], lineaPipeActual[1000], *token;
     pMapper infoDelPipe[parteEntera];
     struct Consulta consulta;
     BufferP bufferActual[parteEntera];
     BufferP informacionEnviar[parteEntera];
-    FILE *fix;
+    FILE *fix ;
 
     if (contador < numCambio)
     {
         parteEntera++;
     }
-
+    
+    printf("se va a abrir el %s en modo de lectura\n", nombrePipe);
     fd = open(nombrePipe, O_RDONLY);
     if (fd == -1)
     {
@@ -430,13 +475,16 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
         return -1;
     }
     read(fd, &infoDelPipe, sizeof(pMapper) * (parteEntera));
+    printf("se leyo del %s\n",nombrePipe);
     for (i = 0; i < parteEntera; i++)
     {
         bufferActual[i].key = 0;
         bufferActual[i].valor = 0;
     }
     sprintf(nombreBuf, "Buf_%d", contador);
+    printf("se va a abrir el %s en modo de escritura\n", nombreBuf);
     fdB = open(nombreBuf, O_WRONLY);
+    
     if (fdB == -1)
     {
         perror("Error: no se pudo abrir el pipe del buffer");
@@ -462,8 +510,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
                 {
                     valor = atoi(token);
                     if (valor > (consulta.valor))
-                    {
-                        contadorLineasBuffer++;
+                    {   
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
                     }
@@ -475,10 +522,8 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
                     valor = atoi(token);
                     if (valor < (consulta.valor))
                     {
-                        contadorLineasBuffer++;
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                        write(fdB, &bufferActual, sizeof(BufferP));
                     }
                 }
                 break;
@@ -488,10 +533,8 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
                     valor = atoi(token);
                     if (valor >= (consulta.valor))
                     {
-                        contadorLineasBuffer++;
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                        write(fdB, &bufferActual, sizeof(BufferP));
                     }
                 }
                 break;
@@ -501,10 +544,8 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
                     valor = atoi(token);
                     if (valor <= (consulta.valor))
                     {
-                        contadorLineasBuffer++;
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                        write(fdB, &bufferActual, sizeof(BufferP));
                     }
                 }
                 break;
@@ -514,10 +555,8 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
                     valor = atoi(token);
                     if (valor == (consulta.valor))
                     {
-                        contadorLineasBuffer++;
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                        write(fdB, &bufferActual, sizeof(BufferP) * parteEntera);
                     }
                 }
                 break;
@@ -526,13 +565,26 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
         }
     }
     memcpy(informacionEnviar, bufferActual, sizeof(BufferP) * parteEntera);
-    write(fdB, &informacionEnviar, sizeof(BufferP) * parteEntera);
+    if(write(fdB, &informacionEnviar, sizeof(BufferP) * parteEntera)==-1)
+    {
+        perror("error en la escirtura del buf");
+    }
+    
+    printf("se esta escribiendo en fix en la funcion del MAPPER\n");
+    printf("se escribio en el  %s\n", nombreBuf);
     close(fd);
     close(fdB);
 
     fix = fopen(nombreAux, "a");
+    if (fix == NULL)
+    {
+        perror("SE TOTIO ESTA PUTA MIERDA");
+    }
+    
     fprintf(fix, "%d\n", 1);
     fclose(fix);
+    printf("acabo el buffer %d\n", contador);
+    printf("llego hasta aqui en el buf%d\n",contador);
     return 0;
 }
 double calcularSobrasReduce(int mapers, int reducers)
@@ -833,6 +885,7 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
         }
     }
     esperaProcesos(nombreaux, (parametros->nmappers + 1));
+    remove(nombreaux);
     printf("llego hasta aqui\n");
 
     for (i = 0; i < parametros->nmappers; i++)
@@ -842,7 +895,6 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
         {
             sprintf(nombrePipe, "pipeM_%d", i);
             map(nombrePipe, parametros, i, nombreaux);
-
             exit(0);
         }
     }
@@ -856,6 +908,10 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
             exit(0);
         }
     }
+
+    esperaProcesos(nombreaux, (parametros->nmappers * 2));
+    printf("terminaron los procesos\n");
+    exit(0);
     /*
     printf("llego hasta aqui\n");
     for (i = 0; i < parametros->nreducers; i++)

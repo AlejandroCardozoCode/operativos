@@ -39,32 +39,6 @@ int verificarInt(char segmento[])
     return siEs;
 }
 
-void esperaProcesos(char nombreaux[], int cantidadEsperar)
-{
-    int continuar = 0,
-        ch,
-        lineas = 0;
-    FILE *ff;
-    while (continuar == 0)
-    {
-        ff = fopen(nombreaux, "r");
-        while (!feof(ff))
-        {
-            ch = fgetc(ff);
-            if (ch == '\n')
-            {
-                lineas++;
-            }
-        }
-        if (lineas == cantidadEsperar)
-        {
-            continuar = 1;
-        }
-        lineas = 0;
-        fclose(ff);
-    }
-    /*remove(nombreaux);*/
-}
 
 int impresion_menu()
 {
@@ -174,7 +148,7 @@ int interpretarConsulta(struct Consulta *consulta)
     consulta->valor = atoi(token);
     return 0;
 }
-double encontrarCambiante(struct Parametros *parametros)
+double encontrarCambianteLM(struct Parametros *parametros)
 {
     int maps = parametros->nmappers;
     int line = parametros->lineas;
@@ -214,7 +188,7 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
     int maps = parametros->nmappers;
     int line = parametros->lineas;
     double lineasArchivos = ((double)line) / ((double)maps);
-    double sobras = encontrarCambiante(parametros);
+    double sobras = encontrarCambianteLM(parametros);
     sobras = sobras + 0.55;
     int a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r,
         fd,
@@ -368,7 +342,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
         v,
         j,
         fx;
-    double numCambio = encontrarCambiante(parametros),
+    double numCambio = encontrarCambianteLM(parametros),
            lineasArchivos = ((double)line) / ((double)maps);
     lineasArchivos = lineasArchivos + 0.05;       
     int parteEntera = ((int)lineasArchivos);
@@ -379,7 +353,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
     FILE * auxinforme;
     char nombreAux [20];
     sprintf( nombreAux, "informe_pipeM_%d",contador);
-    auxinforme = fopen (nombreAux,"a");
+    /*auxinforme = fopen (nombreAux,"a");*/
     if (contador < (int)numCambio)
     {
         parteEntera++;
@@ -406,7 +380,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
         perror("Error: no se pudo abrir el pipe del buffer");
         exit(0);
     }
-    fprintf(auxinforme, "imprimiendo informacion del pipeM_%d\n", contador);
+    /*fprintf(auxinforme, "imprimiendo informacion del pipeM_%d\n", contador);*/
     for (v = 0; v < parteEntera; v++)
     {
         consulta.columna = infoDelPipe[v].consul.columna;
@@ -416,7 +390,7 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                 infoDelPipe[v].d, infoDelPipe[v].e, infoDelPipe[v].f, infoDelPipe[v].g, infoDelPipe[v].h, infoDelPipe[v].i, infoDelPipe[v].j,
                 infoDelPipe[v].k, infoDelPipe[v].l, infoDelPipe[v].m, infoDelPipe[v].n, infoDelPipe[v].o, infoDelPipe[v].p, infoDelPipe[v].q,
                 infoDelPipe[v].r);
-        fprintf(auxinforme, "la consulta de este pipe es %d %d %d y sus valores son %s\n",infoDelPipe[v].consul.columna,infoDelPipe[v].consul.signo,infoDelPipe[v].consul.valor, lineaPipeActual);
+        /*fprintf(auxinforme, "la consulta de este pipe es %d %d %d y sus valores son %s\n",infoDelPipe[v].consul.columna,infoDelPipe[v].consul.signo,infoDelPipe[v].consul.valor, lineaPipeActual);*/
         token = strtok(lineaPipeActual, " ");
         key = atoi(token);
         for (i = 1; i <= 18; i++)
@@ -431,7 +405,6 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
                     {   
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                       /* printf("valor valido: key = %d y valor = %d\n", bufferActual[v].key, bufferActual[v].valor);*/
                     }
                 }
                 break;
@@ -552,11 +525,11 @@ void reduce(struct Parametros *parametros, int reduceActual)
         nombrePipeOut[15],
         nombreArchivoRegistros[20],
         nombreInforme[20];
-    double numCambio = encontrarCambiante(parametros);
+    double numCambio = encontrarCambianteLM(parametros);
+    numCambio = numCambio + 0.55;
     pReducer pipeR;
     FILE *archivoRegistro;
     FILE *auxinforme;
-    BufferP bufferActual[parteEntera2];
     if ((int)sobras == 0)
     {
         if (parametros->intermedios == 1)
@@ -574,9 +547,13 @@ void reduce(struct Parametros *parametros, int reduceActual)
         corrector = reduceActual * (parteEntera);
         for (j = 0; j < parteEntera; j++)
         {
+            if ((corrector +j) < (int)numCambio)
+            {
+                parteEntera2++;
+            }
             BufferP bufferActual[parteEntera2];
             sprintf(nombreInforme, "informe_buf_%d",corrector + j);
-            auxinforme = fopen(nombreInforme, "a");
+            /*auxinforme = fopen(nombreInforme, "a");*/
             sprintf(nombreBuf, "Buf_%d", corrector + j);
             fdB = open(nombreBuf, O_RDONLY);
             if (fdB == -1)
@@ -588,7 +565,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
             corrector = reduceActual * parteEntera;
             for (i = 0; i < parteEntera2; i++)
             {
-                fprintf(auxinforme, "%d %d\n",bufferActual[i].key,  bufferActual[i].valor);
+                /*fprintf(auxinforme, "%d %d\n",bufferActual[i].key,  bufferActual[i].valor);*/
                 if (bufferActual[i].key != 0)
                 {
                     key = bufferActual[i].key;
@@ -625,21 +602,25 @@ void reduce(struct Parametros *parametros, int reduceActual)
             corrector = reduceActual * (parteEntera + 1);
             for (j = 0; j < parteEntera + 1; j++)
             {
-                BufferP bufferActual[parteEntera2 + 1];
+                if ((corrector +j) < (int)numCambio)
+                {
+
+                    parteEntera2++;
+                }
+                BufferP bufferActual[parteEntera2];
                 sprintf(nombreInforme, "informe_buf_%d",corrector + j);
-                auxinforme = fopen(nombreInforme, "a");
+                /*auxinforme = fopen(nombreInforme, "a");*/
                 sprintf(nombreBuf, "Buf_%d", corrector + j);
                 fdB = open(nombreBuf, O_RDONLY);
-                printf("se va a leer el buf %d\n", corrector + j);
                 if (fdB == -1)
                 {
                     perror("Error: no se pudo abrir el pipe del buffer");
                     exit(0);
                 }
-                read(fdB, &bufferActual, sizeof(BufferP) * (parteEntera2 + 1));
-                for (i = 0; i < parteEntera2 + 1; i++)
+                read(fdB, &bufferActual, sizeof(BufferP) * (parteEntera2));
+                for (i = 0; i < parteEntera2; i++)
                 {
-                    fprintf(auxinforme, "%d %d\n",bufferActual[i].key,  bufferActual[i].valor);
+                    /*fprintf(auxinforme, "%d %d\n",bufferActual[i].key,  bufferActual[i].valor);*/
                     if (bufferActual[i].key != 0)
                     {
                         key = bufferActual[i].key;
@@ -650,6 +631,10 @@ void reduce(struct Parametros *parametros, int reduceActual)
                         }
                         lineas++;
                     }
+                }
+                if ((corrector +j) < (int)numCambio)
+                {
+                    parteEntera2--;
                 }
             }
             write(fd, &lineas, sizeof(int));
@@ -677,10 +662,14 @@ void reduce(struct Parametros *parametros, int reduceActual)
             {
                 long double po = j + hallarNumeroOutput(((((long double)mapers / (long double)reducers) - (long double)parteEntera) * (long double)reducers), parteEntera, reduceActual);
                 po = po + 0.55;
+                if ((int)po < (int)numCambio)
+                {
+                        parteEntera2++;
+                }
+                BufferP bufferActual[parteEntera2];
                 sprintf(nombreInforme, "informe_buf_%d",(int)po);
-                auxinforme = fopen(nombreInforme, "a");
+                /*auxinforme = fopen(nombreInforme, "a");*/
                 sprintf(nombreBuf, "Buf_%d", (int)po);
-                printf("se va a leer el buf %d\n", (int)po);
                 fdB = open(nombreBuf, O_RDONLY);
                 if (fdB == -1)
                 {
@@ -690,7 +679,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
                 read(fdB, &bufferActual, sizeof(BufferP) * parteEntera2);
                 for (i = 0; i < parteEntera2; i++)
                 {
-                    fprintf(auxinforme, "%d %d\n",bufferActual[i].key,  bufferActual[i].valor);
+                    /*fprintf(auxinforme, "%d %d\n",bufferActual[i].key,  bufferActual[i].valor);*/
                     if (bufferActual[i].key != 0)
                     {
                         key = bufferActual[i].key;
@@ -701,6 +690,10 @@ void reduce(struct Parametros *parametros, int reduceActual)
                         }
                         lineas++;
                     }
+                }
+                if ((int)po < (int)numCambio)
+                {
+                        parteEntera2--;
                 }
             }
             write(fd, &lineas, sizeof(int));

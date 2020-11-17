@@ -185,25 +185,32 @@ double encontrarCambiante(struct Parametros *parametros)
     return sobras;
 }
 
-void liberarPipe(int c, char nombreAuxContador[], int parteEntera, int condicion)
+int calcularValorFinal(struct Parametros *parametros)
 {
-    if (condicion == 1)
+    int i,
+        valor = 0;
+    for ( i = 0; i < parametros->nreducers; i++)
     {
-        
+        pReducer z;
+        int fd;
+        char nombreReducer[20];
+        sprintf(nombreReducer, "pipeR_%d",i);
+        fd = open(nombreReducer,O_RDONLY);
+        if (fd == -1)
+        {
+            perror("no se pudo abrir el reduceer en modo de lectura");
+        }
+        if (read(fd,&z,sizeof(int)) == -1)
+        {
+            perror("no se puedo leer el reducer");
+        }
+        valor = valor + z.valor;
     }
-
-    if (condicion == 2)
-    {
-        
-    }
-    
-
-    return;
+    return valor;
 }
-int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consulta, char nombreaux[])
+int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consulta)
 {
     FILE *registros;
-    FILE *fix;
     int maps = parametros->nmappers;
     int line = parametros->lineas;
     double lineasArchivos = ((double)line) / ((double)maps);
@@ -215,6 +222,9 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
         auxSobrantes = 0,
         x,
         z;
+    int Ccolumna = consulta->columna,
+        Cvalor = consulta->valor,
+        Csigno = consulta->signo;
 
     char nombrePipe[15], lineaArchivo[1000];
     pMapper infoEnviar[parteEntera],
@@ -236,9 +246,9 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
             for (z = 0; z < parteEntera; z++)
             {
                 fscanf(registros, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r);
-                infoEnviar[z].consul.columna = consulta->columna;
-                infoEnviar[z].consul.valor = consulta->valor;
-                infoEnviar[z].consul.signo = consulta->signo;
+                infoEnviar[z].consul.columna = Ccolumna;
+                infoEnviar[z].consul.valor = Cvalor;
+                infoEnviar[z].consul.signo = Csigno;
                 infoEnviar[z].a = a;
                 infoEnviar[z].b = b;
                 infoEnviar[z].c = c;
@@ -284,9 +294,10 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
                 for (z = 0; z < parteEntera + 1; z++)
                 {
                     fscanf(registros, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r);
-                    infoEnviar2[z].consul.columna = consulta->columna;
-                    infoEnviar2[z].consul.valor = consulta->valor;
-                    infoEnviar2[z].consul.signo = consulta->signo;
+                    infoEnviar2[z].consul.columna = Ccolumna;
+                    printf("el valor de la consulta perra es: %d\n",infoEnviar2[z].consul.columna);
+                    infoEnviar2[z].consul.valor = Cvalor;
+                    infoEnviar2[z].consul.signo = Csigno;
                     infoEnviar2[z].a = a;
                     infoEnviar2[z].b = b;
                     infoEnviar2[z].c = c;
@@ -314,9 +325,9 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
                 for (z = 0; z < parteEntera; z++)
                 {
                     fscanf(registros, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r);
-                    infoEnviar[z].consul.columna = consulta->columna;
-                    infoEnviar[z].consul.valor = consulta->valor;
-                    infoEnviar[z].consul.signo = consulta->signo;
+                    infoEnviar[z].consul.columna = Ccolumna;
+                    infoEnviar[z].consul.valor = Cvalor;
+                    infoEnviar[z].consul.signo = Csigno;
                     infoEnviar[z].a = a;
                     infoEnviar[z].b = b;
                     infoEnviar[z].c = c;
@@ -343,40 +354,9 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
         fclose(registros);
     }
 
-    fix = fopen(nombreaux, "a");
-    fprintf(fix, "%d\n", 1);
-    fclose(fix);
-    /*
-    pMapper infoRecibida[parteEntera + 1];
-    pMapper infoRecibida2[parteEntera];
-    int contadorImp = 0, id;
-
-    for ( x = 0; x <maps ; x++)
-    {
-        id = fork();
-        if (id == 0)
-        {
-            sprintf(nombrePipe, "pipeM_%d", x);
-            fd = open(nombrePipe, O_WRONLY);
-            exit(0);
-        }
-        contadorImp++;
-    }
-    for ( x = 0; x <maps ; x++)
-    {
-        id = fork();
-        if (id == 0)
-        {
-            imprimirPipe1(contadorImp,parteEntera,(int)sobras,infoRecibida[x], infoRecibida2[x],nombrePipe);
-            exit(0);
-        }
-        contadorImp++;
-    }
-    */
-
     return 0;
 }
-int map(char nombrePipe[], struct Parametros *parametros, int contador, char nombreAux[])
+int map(char nombrePipe[], struct Parametros *parametros, int contador)
 {
     int fd,
         key = 0,
@@ -391,20 +371,23 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
         fx;
     double numCambio = encontrarCambiante(parametros),
            lineasArchivos = ((double)line) / ((double)maps);
-    lineasArchivos = lineasArchivos + 0.55;       
+    lineasArchivos = lineasArchivos + 0.05;       
     int parteEntera = ((int)lineasArchivos);
     char nombreBuf[15], lineaPipeActual[1000], *token;
     pMapper infoDelPipe[parteEntera];
     struct Consulta consulta;
     BufferP bufferActual[parteEntera];
     BufferP informacionEnviar[parteEntera];
-    FILE *fix ;
     numCambio = numCambio + 0.55;
+    FILE * auxinforme;
+    char nombreAux [20];
+    sprintf( nombreAux, "informe_pipeM_%d",contador);
+    auxinforme = fopen (nombreAux,"a");
     if (contador < (int)numCambio)
     {
         parteEntera++;
     }
-    printf("el valor del proceso es %d el numero en que cambia es %f que casteado es %d por lo tanto el valor de la parte entera es: %d\n", contador, numCambio,(int)numCambio, parteEntera);
+    printf("el valor de la parte entera en el pipe%d es de: %d y el numero de cambio es %d\n",contador, parteEntera, (int)numCambio);
     fd = open(nombrePipe, O_RDONLY);
     if (fd == -1)
     {
@@ -425,15 +408,18 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
         perror("Error: no se pudo abrir el pipe del buffer");
         exit(0);
     }
+    fprintf(auxinforme, "imprimiendo informacion del pipeM_%d\n", contador);
     for (v = 0; v < parteEntera; v++)
     {
         consulta.columna = infoDelPipe[v].consul.columna;
+        printf("el valor de la columna de la consulta es: %d\n", infoDelPipe[v].consul.columna);
         consulta.signo = infoDelPipe[v].consul.signo;
         consulta.valor = infoDelPipe[v].consul.valor;
         sprintf(lineaPipeActual, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n", infoDelPipe[v].a, infoDelPipe[v].b, infoDelPipe[v].c,
                 infoDelPipe[v].d, infoDelPipe[v].e, infoDelPipe[v].f, infoDelPipe[v].g, infoDelPipe[v].h, infoDelPipe[v].i, infoDelPipe[v].j,
                 infoDelPipe[v].k, infoDelPipe[v].l, infoDelPipe[v].m, infoDelPipe[v].n, infoDelPipe[v].o, infoDelPipe[v].p, infoDelPipe[v].q,
                 infoDelPipe[v].r);
+        fprintf(auxinforme, "la consulta de este pipe es %d %d %d y sus valores son %s\n",infoDelPipe[v].consul.columna,infoDelPipe[v].consul.signo,infoDelPipe[v].consul.valor, lineaPipeActual);
         token = strtok(lineaPipeActual, " ");
         key = atoi(token);
         for (i = 1; i <= 18; i++)
@@ -443,12 +429,13 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
             case 0:
                 if (i == consulta.columna)
                 {
+                    fprintf(auxinforme, "el valor a  analizar pipem_%d, linea %d, clumna %d y su valor es %d\n",contador,v,i,atoi(token));
                     valor = atoi(token);
                     if (valor > (consulta.valor))
                     {   
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                        printf("en el buffer %d en la linea %d el valor de la key es %d y el valor es %d\n", contador, v, bufferActual[v].key, bufferActual[v].valor);
+                        printf("valor valido: key = %d y valor = %d\n", bufferActual[v].key, bufferActual[v].valor);
                     }
                 }
                 break;
@@ -506,20 +493,8 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador, char nom
         perror("error en la escirtura del buf");
     }
     
-    printf("se esta escribiendo en fix en la funcion del MAPPER\n");
-    printf("se escribio en el  %s\n", nombreBuf);
     close(fd);
     close(fdB);
-    fix = fopen(nombreAux, "a");
-    if (fix == NULL)
-    {
-        perror("SE TOTIO ESTA PUTA MIERDA");
-    }
-    
-    fprintf(fix, "%d\n", 1);
-    fclose(fix);
-    printf("acabo el buffer %d\n", contador);
-    printf("llego hasta aqui en el buf%d\n",contador);
     return 0;
 }
 double calcularSobrasReduce(int mapers, int reducers)
@@ -579,10 +554,12 @@ void reduce(struct Parametros *parametros, int reduceActual)
     int parteEntera2 = parametros->lineas / mapers;
     char nombreBuf[15],
         nombrePipeOut[15],
-        nombreArchivoRegistros[20];
+        nombreArchivoRegistros[20],
+        nombreInforme[20];
     double numCambio = encontrarCambiante(parametros);
     pReducer pipeR;
     FILE *archivoRegistro;
+    FILE *auxinforme;
     BufferP bufferActual[parteEntera2];
     if ((int)sobras == 0)
     {
@@ -602,6 +579,8 @@ void reduce(struct Parametros *parametros, int reduceActual)
         for (j = 0; j < parteEntera; j++)
         {
             BufferP bufferActual[parteEntera2];
+            sprintf(nombreInforme, "informe_buf_%d",corrector + j);
+            auxinforme = fopen(nombreInforme, "a");
             sprintf(nombreBuf, "Buf_%d", corrector + j);
             fdB = open(nombreBuf, O_RDONLY);
             if (fdB == -1)
@@ -613,6 +592,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
             corrector = reduceActual * parteEntera;
             for (i = 0; i < parteEntera2; i++)
             {
+                fprintf(auxinforme, "%d %d\n",bufferActual[i].key,  bufferActual[i].valor);
                 if (bufferActual[i].key != 0)
                 {
                     key = bufferActual[i].key;
@@ -650,6 +630,8 @@ void reduce(struct Parametros *parametros, int reduceActual)
             for (j = 0; j < parteEntera + 1; j++)
             {
                 BufferP bufferActual[parteEntera2 + 1];
+                sprintf(nombreInforme, "informe_buf_%d",corrector + j);
+                auxinforme = fopen(nombreInforme, "a");
                 sprintf(nombreBuf, "Buf_%d", corrector + j);
                 fdB = open(nombreBuf, O_RDONLY);
                 if (fdB == -1)
@@ -660,7 +642,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
                 read(fdB, &bufferActual, sizeof(BufferP) * (parteEntera2 + 1));
                 for (i = 0; i < parteEntera2 + 1; i++)
                 {
-
+                    fprintf(auxinforme, "%d %d\n",bufferActual[i].key,  bufferActual[i].valor);
                     if (bufferActual[i].key != 0)
                     {
                         key = bufferActual[i].key;
@@ -698,6 +680,8 @@ void reduce(struct Parametros *parametros, int reduceActual)
             {
                 long double po = j + hallarNumeroOutput(((((long double)mapers / (long double)reducers) - (long double)parteEntera) * (long double)reducers), parteEntera, reduceActual);
                 po = po + 0.55;
+                sprintf(nombreInforme, "informe_buf_%d",(int)po);
+                auxinforme = fopen(nombreInforme, "a");
                 sprintf(nombreBuf, "Buf_%d", (int)po);
                 fdB = open(nombreBuf, O_RDONLY);
                 if (fdB == -1)
@@ -708,6 +692,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
                 read(fdB, &bufferActual, sizeof(BufferP) * parteEntera2);
                 for (i = 0; i < parteEntera2; i++)
                 {
+                    fprintf(auxinforme, "%d %d\n",bufferActual[i].key,  bufferActual[i].valor);
                     if (bufferActual[i].key != 0)
                     {
                         key = bufferActual[i].key;
@@ -753,26 +738,7 @@ void borrarArchivos(struct Parametros *parametros)
         remove(nombreArch);
     }
 }
-int calcularValorFinal(struct Parametros *parametros)
-{
-    pReducer infoRecibida;
-    char nombreRedu[15];
-    int fd,
-        contador = 0,
-        reducers = parametros->nreducers,
-        i;
-    for (i = 0; i < reducers; i++)
-    {
-        sprintf(nombreRedu, "pipeR_%d", i);
-        fd = open(nombreRedu, O_RDONLY);
-        read(fd, &infoRecibida, sizeof(BufferP) * reducers);
-        if (infoRecibida.valor != 0)
-        {
-            contador = contador + infoRecibida.valor;
-        }
-    }
-    return contador;
-}
+
 int master(struct Parametros *parametros, struct Consulta *consulta)
 {
     int validacionConsulta = interpretarConsulta(consulta),
@@ -785,8 +751,7 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
         i,
         parteEntera = (int)(parametros->lineas / parametros->nmappers);
     struct timeval tiempo_i, tiempo_f, tiempo_tot;
-    char nombrePipe[15],
-        nombreaux[20] = "fix.txt";
+    char nombrePipe[15];
 
     if (validacionConsulta == -1)
     {
@@ -800,7 +765,7 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
         id = fork();
         if (id == 0)
         {
-            validacionAsigPipe1 = asignacionPipeMapper(parametros, consulta, nombreaux);
+            validacionAsigPipe1 = asignacionPipeMapper(parametros, consulta);
             if (validacionAsigPipe1 == -1)
             {
                 printf("ERROR: ocurrio un error inesperado en la asignacion del pipe 1\n");
@@ -816,23 +781,11 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
         if (id == 0)
         {
             sprintf(nombrePipe, "pipeM_%d", i);
-            map(nombrePipe, parametros, i, nombreaux);
+            map(nombrePipe, parametros, i);
             exit(0);
         }
     }
 
-    for (i = 0; i < parametros->nmappers; i++)
-    {
-        id = fork();
-        if (id == 0)
-        {
-            liberarPipe(i, nombreaux, parteEntera, 2);
-            exit(0);
-        }
-    }
-
-    /*
-    printf("llego hasta aqui\n");
     for (i = 0; i < parametros->nreducers; i++)
     {
         idR = fork();
@@ -842,13 +795,12 @@ int master(struct Parametros *parametros, struct Consulta *consulta)
             exit(0);
         }
     }
-    printf("llego hasta aqui\n");
     gettimeofday(&tiempo_f, NULL);
     timersub(&tiempo_f, &tiempo_i, &tiempo_tot);
     printf("Resultados\n");
     printf("El tiempo que tomo el programa fue de: %li segundos %li microsegundos\n", tiempo_tot.tv_sec, tiempo_tot.tv_usec);
     valorFinal = calcularValorFinal(parametros);
-    printf("el valor final es: %d\n", valorFinal);*/
+    printf("el valor final es: %d\n", valorFinal);
     return 0;
 }
 

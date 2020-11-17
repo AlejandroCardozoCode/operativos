@@ -295,7 +295,6 @@ int asignacionPipeMapper(struct Parametros *parametros, struct Consulta *consult
                 {
                     fscanf(registros, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d \n", &a, &b, &c, &d, &e, &f, &g, &h, &i, &j, &k, &l, &m, &n, &o, &p, &q, &r);
                     infoEnviar2[z].consul.columna = Ccolumna;
-                    printf("el valor de la consulta perra es: %d\n",infoEnviar2[z].consul.columna);
                     infoEnviar2[z].consul.valor = Cvalor;
                     infoEnviar2[z].consul.signo = Csigno;
                     infoEnviar2[z].a = a;
@@ -376,8 +375,6 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
     char nombreBuf[15], lineaPipeActual[1000], *token;
     pMapper infoDelPipe[parteEntera];
     struct Consulta consulta;
-    BufferP bufferActual[parteEntera];
-    BufferP informacionEnviar[parteEntera];
     numCambio = numCambio + 0.55;
     FILE * auxinforme;
     char nombreAux [20];
@@ -387,7 +384,8 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
     {
         parteEntera++;
     }
-    printf("el valor de la parte entera en el pipe%d es de: %d y el numero de cambio es %d\n",contador, parteEntera, (int)numCambio);
+    BufferP bufferActual[parteEntera];
+    BufferP informacionEnviar[parteEntera];
     fd = open(nombrePipe, O_RDONLY);
     if (fd == -1)
     {
@@ -412,7 +410,6 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
     for (v = 0; v < parteEntera; v++)
     {
         consulta.columna = infoDelPipe[v].consul.columna;
-        printf("el valor de la columna de la consulta es: %d\n", infoDelPipe[v].consul.columna);
         consulta.signo = infoDelPipe[v].consul.signo;
         consulta.valor = infoDelPipe[v].consul.valor;
         sprintf(lineaPipeActual, "%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n", infoDelPipe[v].a, infoDelPipe[v].b, infoDelPipe[v].c,
@@ -429,13 +426,12 @@ int map(char nombrePipe[], struct Parametros *parametros, int contador)
             case 0:
                 if (i == consulta.columna)
                 {
-                    fprintf(auxinforme, "el valor a  analizar pipem_%d, linea %d, clumna %d y su valor es %d\n",contador,v,i,atoi(token));
                     valor = atoi(token);
                     if (valor > (consulta.valor))
                     {   
                         bufferActual[v].valor = valor;
                         bufferActual[v].key = key;
-                        printf("valor valido: key = %d y valor = %d\n", bufferActual[v].key, bufferActual[v].valor);
+                       /* printf("valor valido: key = %d y valor = %d\n", bufferActual[v].key, bufferActual[v].valor);*/
                     }
                 }
                 break;
@@ -634,6 +630,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
                 auxinforme = fopen(nombreInforme, "a");
                 sprintf(nombreBuf, "Buf_%d", corrector + j);
                 fdB = open(nombreBuf, O_RDONLY);
+                printf("se va a leer el buf %d\n", corrector + j);
                 if (fdB == -1)
                 {
                     perror("Error: no se pudo abrir el pipe del buffer");
@@ -683,6 +680,7 @@ void reduce(struct Parametros *parametros, int reduceActual)
                 sprintf(nombreInforme, "informe_buf_%d",(int)po);
                 auxinforme = fopen(nombreInforme, "a");
                 sprintf(nombreBuf, "Buf_%d", (int)po);
+                printf("se va a leer el buf %d\n", (int)po);
                 fdB = open(nombreBuf, O_RDONLY);
                 if (fdB == -1)
                 {
